@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
+import { Trash2 } from 'lucide-vue-next';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
 import Heading from '@/components/Heading.vue';
@@ -17,6 +18,12 @@ type Row = {
 defineProps<{
     rooms: Row[];
 }>();
+
+function confirmDelete(name: string): boolean {
+    return window.confirm(
+        `Xóa phòng "${name}"?\n\nTất cả kỳ, cược và cấu hình mặt cược sẽ bị xóa. Các cược trong kỳ đang mở sẽ được hoàn tiền vào số dư người chơi.\n\nHành động này không thể hoàn tác.`,
+    );
+}
 
 defineOptions({
     layout: {
@@ -70,6 +77,25 @@ defineOptions({
                     <Button as-child variant="secondary" size="sm">
                         <Link :href="EventRoomController.edit.url(r.id)">Sửa</Link>
                     </Button>
+                    <Form
+                        v-bind="EventRoomController.destroy.form({ event_room: r.id })"
+                        @submit="(event: SubmitEvent) => {
+                            if (!confirmDelete(r.name)) {
+                                event.preventDefault();
+                            }
+                        }"
+                        #default="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            size="sm"
+                            :disabled="processing"
+                        >
+                            <Trash2 class="size-3.5" />
+                            Xóa
+                        </Button>
+                    </Form>
                 </div>
             </li>
         </ul>

@@ -2,7 +2,8 @@
 import EventBetController from '@/actions/App/Http/Controllers/Sukien/EventBetController';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
-import { formatVnd, parseVndInput } from '@/lib/vnd';
+import CurrencyInput from '@/components/CurrencyInput.vue';
+import { formatVnd } from '@/lib/vnd';
 import {
     echo,
     joinSukienPresence,
@@ -218,23 +219,19 @@ watch(
 );
 
 const selectedOptionId = ref<number | null>(props.options[0]?.id ?? null);
-const vndText = ref('');
 const amountVnd = ref(0);
 
 function setAmount(n: number) {
-    const capped = Math.max(0, Math.min(n, liveBalance.value));
-    amountVnd.value = capped;
-    vndText.value = capped > 0 ? new Intl.NumberFormat('vi-VN').format(capped) : '';
-}
-
-function onVndInput(e: Event) {
-    const t = e.target as HTMLInputElement;
-    setAmount(parseVndInput(t.value));
+    amountVnd.value = Math.max(0, Math.min(n, liveBalance.value));
 }
 
 function resetAmount() {
     setAmount(0);
 }
+
+watch(liveBalance, (b) => {
+    if (amountVnd.value > b) setAmount(b);
+});
 
 const betForm = useForm({
     option_id: 0,
@@ -480,20 +477,13 @@ async function loadMoreRounds() {
                     >
                         Số tiền cược
                     </label>
-                    <div class="relative">
-                        <input
-                            id="vnd-amount"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="off"
-                            placeholder="0"
-                            class="bet-amount-input"
-                            :class="{ 'is-invalid': insufficientBalance }"
-                            :value="vndText"
-                            @input="onVndInput"
-                        />
-                        <span class="bet-amount-suffix">₫</span>
-                    </div>
+                    <CurrencyInput
+                        id="vnd-amount"
+                        v-model="amountVnd"
+                        :max="liveBalance"
+                        :aria-invalid="insufficientBalance"
+                        input-class="bet-amount-input"
+                    />
 
                     <div class="mt-2 grid grid-cols-4 gap-1.5">
                         <button
@@ -582,63 +572,17 @@ async function loadMoreRounds() {
 </template>
 
 <style scoped>
-.bet-amount-input {
-    display: block;
-    width: 100%;
+/* Make the reused CurrencyInput larger inside the betting card. */
+:deep(.bet-amount-input) {
     height: 3rem;
-    padding: 0 2.5rem 0 1rem;
-    border: 2px solid rgb(231 229 228);
-    border-radius: 0.75rem;
-    background-color: white;
-    color: rgb(28 25 23);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-size: 1.375rem;
     font-weight: 700;
-    letter-spacing: 0.025em;
-    text-align: right;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    transition: border-color 150ms ease, box-shadow 150ms ease;
-    outline: none;
-    -moz-appearance: textfield;
-    appearance: textfield;
+    border-width: 2px;
+    border-radius: 0.75rem;
 }
 
-.bet-amount-input::-webkit-outer-spin-button,
-.bet-amount-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.bet-amount-input::placeholder {
-    color: rgb(214 211 209);
-    font-weight: 400;
-}
-
-.bet-amount-input:hover {
-    border-color: rgb(214 211 209);
-}
-
-.bet-amount-input:focus {
-    border-color: rgb(217 119 6);
+:deep(.bet-amount-input:focus) {
     box-shadow: 0 0 0 4px rgb(254 243 199);
-}
-
-.bet-amount-input.is-invalid {
-    border-color: rgb(220 38 38);
-    box-shadow: 0 0 0 4px rgb(254 226 226);
-}
-
-.bet-amount-suffix {
-    pointer-events: none;
-    position: absolute;
-    inset-block: 0;
-    right: 0.875rem;
-    display: flex;
-    align-items: center;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: rgb(168 162 158);
 }
 
 .quick-chip {

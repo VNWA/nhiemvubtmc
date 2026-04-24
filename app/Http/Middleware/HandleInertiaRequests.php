@@ -43,6 +43,10 @@ class HandleInertiaRequests extends Middleware
                 'canManageUsers' => $request->user()?->hasRole('admin') ?? false,
                 'balanceVnd' => (int) ($request->user()?->balance_vnd ?? 0),
             ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

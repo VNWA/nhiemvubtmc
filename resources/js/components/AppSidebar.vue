@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, CalendarHeart, FolderGit2, LayoutGrid, Users } from 'lucide-vue-next';
+import { BookOpen, Banknote, CalendarHeart, FolderGit2, LayoutGrid, Palette, Users } from 'lucide-vue-next';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
+import WithdrawalController from '@/actions/App/Http/Controllers/Admin/WithdrawalController';
 import { computed } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import AppLogo from '@/components/AppLogo.vue';
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes/admin';
 import type { NavItem } from '@/types';
+import appearance from '@/routes/admin/appearance';
 
 const page = usePage();
 
@@ -28,6 +30,11 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Dashboard',
             href: dashboard(),
             icon: LayoutGrid,
+        },
+        {
+            title: 'Giới thiệu',
+            href: appearance.view('About'),
+            icon: Palette,
         },
     ];
 
@@ -41,6 +48,11 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Sự kiện (phòng)',
             href: EventRoomController.index.url(),
             icon: CalendarHeart,
+        });
+        items.push({
+            title: 'Yêu cầu rút tiền',
+            href: WithdrawalController.index.url(),
+            icon: Banknote,
         });
     }
 

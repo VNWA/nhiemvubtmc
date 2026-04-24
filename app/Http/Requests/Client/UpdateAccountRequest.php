@@ -5,7 +5,6 @@ namespace App\Http\Requests\Client;
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class UpdateAccountRequest extends FormRequest
 {
@@ -38,7 +37,6 @@ class UpdateAccountRequest extends FormRequest
         return [
             'name' => $this->nameRules(),
             'username' => $this->usernameRules($userId),
-            'password' => ['nullable', 'confirmed', Password::min(1)],
         ];
     }
 }

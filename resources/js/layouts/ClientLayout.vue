@@ -6,7 +6,7 @@ import { home } from '@/routes';
 import { Link, usePage } from '@inertiajs/vue3';
 import { CalendarHeart, HomeIcon, User2, Wallet } from 'lucide-vue-next';
 import { computed } from 'vue';
-
+import '../../css/client.css';
 const page = usePage();
 
 const balanceVnd = computed<number>(() => {
@@ -50,22 +50,23 @@ const currentUrl = computed<string>(() => {
 </script>
 
 <template>
-    <div class="min-h-screen w-full bg-stone-100 text-stone-900">
-        <main class="client-main mx-auto flex min-h-screen w-full max-w-5xl flex-1 flex-col bg-white">
-            <header class="sticky top-0 z-20 bg-[#9b0101] px-3 py-2 text-[#f0f48d] shadow-md">
+    <div class="client-shell w-full">
+        <main class="client-main mx-auto flex min-h-screen w-full max-w-5xl flex-1 flex-col">
+            <header class="client-header">
                 <div class="flex items-center justify-between gap-2">
-                    <Link :href="home().url" class="flex items-center gap-2 active:opacity-80">
-                        <h1 class="text-lg font-bold uppercase tracking-wide">Bảo tín minh châu</h1>
+                    <Link :href="home().url" class="client-header-brand">
+                        <img src="/images/logo.png" alt="SJC" class="client-header-logo" />
+                        <span class="client-header-title">
+                            <span class="title">{{ page.props.name }}</span>
+                            <span class="subtitle">Vàng · Bạc · Đá quý</span>
+                        </span>
                     </Link>
-                    <Link
-                        :href="AccountController.show.url()"
-                        class="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold backdrop-blur transition active:scale-95"
-                    >
+                    <Link :href="AccountController.show.url()" class="client-balance-pill" aria-label="Tài khoản">
                         <Wallet class="size-3.5" />
-                        <span class="font-mono">{{ formatVnd(balanceVnd) }}</span>
+                        <span class="amount">{{ formatVnd(balanceVnd) }}</span>
                     </Link>
                 </div>
-                <p class="mt-0.5 text-[11px] text-[#f0f48d]/80">Xin chào, {{ userName }}</p>
+                <p class="client-greeting">Xin chào, <strong>{{ userName }}</strong></p>
             </header>
 
             <div class="flex-1">
@@ -76,11 +77,7 @@ const currentUrl = computed<string>(() => {
         <nav class="client-bottom-nav">
             <ul class="grid grid-cols-3">
                 <li v-for="item in navItems" :key="item.label">
-                    <Link
-                        :href="item.href"
-                        class="nav-item"
-                        :class="{ 'is-active': item.matches(currentUrl) }"
-                    >
+                    <Link :href="item.href" class="nav-item" :class="{ 'is-active': item.matches(currentUrl) }">
                         <component :is="item.icon" class="size-5" />
                         <span>{{ item.label }}</span>
                     </Link>
@@ -89,49 +86,3 @@ const currentUrl = computed<string>(() => {
         </nav>
     </div>
 </template>
-
-<style scoped>
-.client-main {
-    color: rgb(28 25 23);
-    font-family: 'Times New Roman', serif;
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
-}
-
-.client-bottom-nav {
-    position: fixed;
-    inset-inline: 0;
-    bottom: 0;
-    z-index: 30;
-    background: white;
-    border-top: 1px solid rgb(231 229 228);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
-    padding-bottom: env(safe-area-inset-bottom);
-}
-
-.nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.125rem;
-    padding: 0.5rem 0.25rem;
-    color: rgb(120 113 108);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    text-transform: capitalize;
-    transition: color 150ms ease, background-color 150ms ease;
-}
-
-.nav-item:active {
-    background: rgb(254 243 199);
-}
-
-.nav-item.is-active {
-    color: rgb(180 83 9);
-    font-weight: 700;
-}
-
-.nav-item.is-active svg {
-    color: rgb(217 119 6);
-}
-</style>

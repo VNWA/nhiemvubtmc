@@ -1,43 +1,105 @@
+<script lang="ts" setup>
+import { Link } from '@inertiajs/vue3';
+
+type Shortcut = {
+    label: string;
+    href: string;
+    image: string;
+    tone: 'primary' | 'gold' | 'sky';
+};
+
+const shortcuts: Shortcut[] = [
+    {
+        label: 'Rút tiền',
+        href: '/rut-tien',
+        image: '/images/ruttien.png',
+        tone: 'gold',
+    },
+    {
+        label: 'Sự kiện',
+        href: '/sukien',
+        image: '/images/sukien.png',
+        tone: 'primary',
+    },
+    {
+        label: 'Giới thiệu',
+        href: '/gioi-thieu',
+        image: '/images/gioithieu.png',
+        tone: 'sky',
+    },
+];
+</script>
+
 <template>
-    <div class="space-y-4">
-        <div>
-            <img src="/images/banner.jpg" alt="logo" class="w-full h-full object-cover">
+    <div class="space-y-4 pb-24">
+        <div class="overflow-hidden rounded-xl border border-stone-100 shadow-sm">
+            <img src="https://sjccantho.vn/public/upload/slide/BANNER%20KIM%20C%C6%AF%C6%A0NG.png" alt="Banner"
+                class="h-full w-full object-cover" />
         </div>
-        <div>
-            <ul class="grid grid-cols-3 gap-4">
-                <li class="flex flex-col items-center justify-center gap-2 p-3">
-                    <div class="size-16 bg-teal-500/80 rounded-full flex items-center justify-center p-2">
 
-                        <img src="/images/ruttien.png" alt="product-1" class="size-8 object-cover ">
-                    </div>
-                    <span class="text-sm text-center font-bold">Rút tiền</span>
-                </li>
-                <li>
-                    <Link
-                        href="/sukien"
-                        class="flex flex-col items-center justify-center gap-2 p-3 active:opacity-80"
-                    >
-                    <div class="size-16 bg-amber-100/80 rounded-full flex items-center justify-center p-2">
-
-                        <img src="/images/sukien.png" alt="Sự kiện" class="size-10 object-cover ">
-                    </div>
-                    <span class="text-sm text-center font-bold">Sự kiện</span>
+        <div class="px-1">
+            <ul class="grid grid-cols-3 gap-3">
+                <li v-for="item in shortcuts" :key="item.label">
+                    <Link :href="item.href"
+                        class="group flex flex-col items-center justify-center gap-2 rounded-xl p-3 transition active:scale-[0.98] active:opacity-80">
+                        <span class="shortcut-icon" :data-tone="item.tone">
+                            <img :src="item.image" :alt="item.label" class="size-9 object-contain" />
+                        </span>
+                        <span class="shortcut-label">{{ item.label }}</span>
                     </Link>
-                </li>
-                <li class="flex flex-col items-center justify-center gap-2 p-3">
-                    <div class="size-16 bg-green-500/80 rounded-full flex items-center justify-center p-2">
-
-                        <img src="/images/gioithieu.png" alt="product-1" class="size-8 object-cover ">
-                    </div>
-                    <span class="text-sm text-center font-bold">Giới thiệu</span>
                 </li>
             </ul>
         </div>
     </div>
 </template>
 
-<script lang="ts" setup>
-import { Link } from '@inertiajs/vue3';
-</script>
+<style scoped>
+.shortcut-icon {
+    display: inline-flex;
+    height: 4rem;
+    width: 4rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1.5px solid transparent;
+    box-shadow: 0 6px 16px -10px rgba(13, 79, 158, 0.35);
+    transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+}
 
-<style></style>
+.group:hover .shortcut-icon {
+    transform: translateY(-2px);
+    filter: brightness(1.04);
+}
+
+.shortcut-icon[data-tone='primary'] {
+    background: linear-gradient(135deg, #0d4f9e 0%, #1565c0 100%);
+    border-color: rgba(232, 165, 0, 0.55);
+    box-shadow:
+        inset 0 -2px 0 rgba(232, 165, 0, 0.6),
+        0 8px 18px -10px rgba(13, 79, 158, 0.5);
+}
+
+.shortcut-icon[data-tone='gold'] {
+    background: linear-gradient(135deg, #fbc43a 0%, #e8a500 100%);
+    border-color: rgba(13, 79, 158, 0.45);
+    box-shadow:
+        inset 0 -2px 0 rgba(13, 79, 158, 0.35),
+        0 8px 18px -10px rgba(232, 165, 0, 0.5);
+}
+
+.shortcut-icon[data-tone='sky'] {
+    background: linear-gradient(135deg, #e3efff 0%, #bddcff 100%);
+    border-color: rgba(13, 79, 158, 0.3);
+    box-shadow:
+        inset 0 -2px 0 rgba(13, 79, 158, 0.18),
+        0 8px 18px -10px rgba(13, 79, 158, 0.25);
+}
+
+.shortcut-label {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--primary-1, #0d4f9e);
+    text-align: center;
+    letter-spacing: 0.01em;
+}
+</style>

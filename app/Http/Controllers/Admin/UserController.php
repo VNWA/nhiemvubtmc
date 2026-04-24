@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\AdjustUserBalanceRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Services\WalletService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -112,6 +113,54 @@ class UserController extends Controller
         ]);
     }
 
+    public function deposit(User $user): Response
+    {
+        $this->authorize('update', $user);
+
+        $transactions = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (WalletTransaction $t) => [
+                'id' => $t->id,
+                'direction' => $t->direction->value,
+                'source' => $t->source->value,
+                'source_label' => $t->source->label(),
+                'amount_vnd' => (int) $t->amount_vnd,
+                'balance_after_vnd' => (int) $t->balance_after_vnd,
+                'description' => $t->description,
+                'created_at' => $t->created_at?->toIso8601String(),
+            ])
+            ->values()
+            ->all();
+
+        $totals = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->selectRaw('direction, COALESCE(SUM(amount_vnd), 0) as sum_amount, COUNT(*) as total')
+            ->groupBy('direction')
+            ->get()
+            ->keyBy('direction');
+
+        return Inertia::render('admin/users/Deposit', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'balance_vnd' => (int) $user->balance_vnd,
+                'role' => $user->roles->first()?->name ?? 'user',
+            ],
+            'transactions' => $transactions,
+            'summary' => [
+                'credit_total' => (int) ($totals[WalletDirection::Credit->value]->sum_amount ?? 0),
+                'credit_count' => (int) ($totals[WalletDirection::Credit->value]->total ?? 0),
+                'debit_total' => (int) ($totals[WalletDirection::Debit->value]->sum_amount ?? 0),
+                'debit_count' => (int) ($totals[WalletDirection::Debit->value]->total ?? 0),
+            ],
+        ]);
+    }
+
     public function adjustBalance(AdjustUserBalanceRequest $request, User $user): RedirectResponse
     {
         $data = $request->validated();
@@ -135,12 +184,10 @@ class UserController extends Controller
         });
 
         $message = $isCredit
-            ? __('Added :amount VND to balance.', ['amount' => number_format($amount, 0, ',', '.')])
-            : __('Deducted :amount VND from balance.', ['amount' => number_format($amount, 0, ',', '.')]);
+            ? sprintf('Đã nạp %s VNĐ vào số dư.', number_format($amount, 0, ',', '.'))
+            : sprintf('Đã trừ %s VNĐ khỏi số dư.', number_format($amount, 0, ',', '.'));
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
-
-        return to_route('admin.users.edit', ['user' => $user->id]);
+        return back()->with('success', $message);
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse

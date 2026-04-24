@@ -2,6 +2,7 @@
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
+import CurrencyInput from '@/components/CurrencyInput.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
@@ -16,7 +17,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { formatVnd, parseVndInput } from '@/lib/vnd';
+import { formatVnd } from '@/lib/vnd';
 
 const props = defineProps<{
     user: {
@@ -32,20 +33,10 @@ const props = defineProps<{
 
 const selectedRole = ref<string>(props.user.role);
 const adjustAmount = ref(0);
-const adjustText = ref('');
 const adjustOperation = ref<'credit' | 'debit'>('credit');
-
-function onAmountInput(e: Event) {
-    const t = e.target as HTMLInputElement;
-    const n = parseVndInput(t.value);
-    adjustAmount.value = n;
-    t.value = n > 0 ? new Intl.NumberFormat('vi-VN').format(n) : '';
-    adjustText.value = t.value;
-}
 
 function resetAdjust() {
     adjustAmount.value = 0;
-    adjustText.value = '';
 }
 
 defineOptions({
@@ -169,17 +160,13 @@ defineOptions({
             >
                 <div class="grid gap-2">
                     <Label for="amount_vnd">Số tiền (VNĐ)</Label>
-                    <Input
+                    <CurrencyInput
                         id="amount_vnd"
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        class="font-mono"
+                        v-model="adjustAmount"
+                        name="amount_vnd"
                         placeholder="VD: 100.000"
-                        :value="adjustText"
-                        @input="onAmountInput"
+                        :aria-invalid="!!errors.amount_vnd"
                     />
-                    <input type="hidden" name="amount_vnd" :value="adjustAmount" />
                     <InputError :message="errors.amount_vnd" />
                 </div>
 

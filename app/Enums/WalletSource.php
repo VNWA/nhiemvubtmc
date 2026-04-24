@@ -8,6 +8,7 @@ enum WalletSource: string
     case AdminDebit = 'admin_debit';
     case BetPlace = 'bet_place';
     case BetCancel = 'bet_cancel';
+    case Withdrawal = 'withdrawal';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum WalletSource: string
             self::AdminDebit => 'Admin trừ số dư',
             self::BetPlace => 'Đặt cược',
             self::BetCancel => 'Huỷ cược (hoàn tiền)',
+            self::Withdrawal => 'Rút tiền đã duyệt',
         };
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\EventRoundStatus;
+use App\Enums\WalletDirection;
+use App\Enums\WalletSource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreEventRoomRequest;
 use App\Http\Requests\Admin\UpdateEventRoomRequest;
@@ -10,8 +12,11 @@ use App\Models\EventBet;
 use App\Models\EventRoom;
 use App\Models\EventRoomOption;
 use App\Models\EventRound;
+use App\Models\User;
 use App\Services\EventRoundService;
+use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -19,6 +24,8 @@ use Inertia\Response;
 
 class EventRoomController extends Controller
 {
+    public function __construct(private readonly WalletService $wallet) {}
+
     public function index(): Response
     {
         $rooms = EventRoom::query()
@@ -209,6 +216,79 @@ class EventRoomController extends Controller
         return redirect()
             ->route('admin.sukien-rooms.index')
             ->with('success', 'Đã cập nhật phòng.');
+    }
+
+    public function destroy(EventRoom $eventRoom): RedirectResponse
+    {
+        DB::transaction(function () use ($eventRoom) {
+            $roomId = $eventRoom->getKey();
+
+            /** @var \Illuminate\Support\Collection<int, EventRound> $openRounds */
+            $openRounds = EventRound::query()
+                ->where('event_room_id', $roomId)
+                ->where('status', EventRoundStatus::Open)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($openRounds as $round) {
+                /** @var \Illuminate\Support\Collection<int, EventBet> $bets */
+                $bets = EventBet::query()
+                    ->where('event_round_id', $round->getKey())
+                    ->with('option')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($bets as $bet) {
+                    /** @var User $lockedUser */
+                    $lockedUser = User::query()
+                        ->whereKey($bet->user_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $amount = (int) $bet->amount_vnd;
+                    $optionLabel = $bet->option?->label;
+                    $betId = (int) $bet->getKey();
+
+                    $bet->delete();
+
+                    $this->wallet->apply(
+                        $lockedUser,
+                        WalletDirection::Credit,
+                        WalletSource::BetCancel,
+                        $amount,
+                        'Hoàn cược do xóa phòng "'.$eventRoom->name.'" (kỳ #'.$round->round_number.')',
+                        [
+                            'event_room_id' => (int) $roomId,
+                            'event_room_name' => $eventRoom->name,
+                            'event_round_id' => (int) $round->getKey(),
+                            'round_number' => (int) $round->round_number,
+                            'option_label' => $optionLabel,
+                            'bet_id' => $betId,
+                            'reason' => 'room_deleted',
+                        ],
+                    );
+                }
+            }
+
+            EventBet::query()
+                ->whereIn('event_round_id', EventRound::query()
+                    ->where('event_room_id', $roomId)
+                    ->select('id'))
+                ->delete();
+
+            EventRound::query()->where('event_room_id', $roomId)->delete();
+            EventRoomOption::query()->where('event_room_id', $roomId)->delete();
+
+            if ($eventRoom->avatar_path) {
+                Storage::disk('public')->delete($eventRoom->avatar_path);
+            }
+
+            $eventRoom->delete();
+        });
+
+        return redirect()
+            ->route('admin.sukien-rooms.index')
+            ->with('success', 'Đã xóa phòng sự kiện và hoàn tiền các cược đang mở.');
     }
 
     /**

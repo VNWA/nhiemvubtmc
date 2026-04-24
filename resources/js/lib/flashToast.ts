@@ -4,13 +4,24 @@ import type { FlashToast } from '@/types/ui';
 
 export function initializeFlashToast(): void {
     router.on('flash', (event) => {
-        const flash = (event as CustomEvent).detail?.flash;
-        const data = flash?.toast as FlashToast | undefined;
+        const flash = (event as CustomEvent).detail?.flash as
+            | { toast?: FlashToast; success?: string; error?: string }
+            | undefined;
 
-        if (!data) {
+        if (!flash) {
             return;
         }
 
-        toast[data.type](data.message);
+        if (flash.toast) {
+            toast[flash.toast.type](flash.toast.message);
+        }
+
+        if (typeof flash.success === 'string' && flash.success !== '') {
+            toast.success(flash.success);
+        }
+
+        if (typeof flash.error === 'string' && flash.error !== '') {
+            toast.error(flash.error);
+        }
     });
 }

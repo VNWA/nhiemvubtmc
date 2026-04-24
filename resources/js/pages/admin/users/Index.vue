@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { Coins } from 'lucide-vue-next';
 import { computed } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import Heading from '@/components/Heading.vue';
@@ -52,7 +53,7 @@ defineOptions({
         <div
             class="overflow-x-auto rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
         >
-            <table class="w-full min-w-[36rem] text-left text-sm">
+            <table class="w-full min-w-xl text-left text-sm">
                 <thead
                     class="border-b border-sidebar-border/70 bg-muted/40 dark:border-sidebar-border"
                 >
@@ -74,8 +75,18 @@ defineOptions({
                         <td class="p-3">{{ u.name }}</td>
                         <td class="p-3 font-mono text-xs">{{ u.username }}</td>
                         <td class="p-3 text-muted-foreground">{{ u.email }}</td>
-                        <td class="p-3 text-end font-mono text-xs">
-                            {{ formatVnd(u.balance_vnd) }}
+                        <td class="p-3 text-end">
+                            <div class="flex items-center justify-end gap-2">
+                                <span class="font-mono text-xs">{{ formatVnd(u.balance_vnd) }}</span>
+                                <Link
+                                    :href="UserController.deposit.url({ user: u.id })"
+                                    class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                    title="Nạp / trừ tiền và xem lịch sử"
+                                >
+                                    <Coins class="size-3" />
+                                    Nạp tiền
+                                </Link>
+                            </div>
                         </td>
                         <td class="p-3">
                             <span
@@ -86,6 +97,14 @@ defineOptions({
                         </td>
                         <td class="p-3 text-end">
                             <div class="flex flex-wrap items-center justify-end gap-2">
+                                <Button size="sm" variant="outline" as-child>
+                                    <Link
+                                        :href="UserController.deposit.url({ user: u.id })"
+                                    >
+                                        <Coins class="size-3.5" />
+                                        Nạp tiền
+                                    </Link>
+                                </Button>
                                 <Button variant="secondary" size="sm" as-child>
                                     <Link
                                         :href="UserController.edit.url({ user: u.id })"
