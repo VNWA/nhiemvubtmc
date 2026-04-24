@@ -38,11 +38,25 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
+        $search = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->integer('per_page', 15);
+        $perPage = max(5, min($perPage, 100));
+
         $users = User::query()
-            ->with('roles')
-            ->orderBy('name')
-            ->get()
-            ->map(function (User $user) {
+            ->with(['roles', 'creator:id,name,username'])
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.$search.'%';
+                $query->where(function ($q) use ($like) {
+                    $q->where('name', 'ilike', $like)
+                        ->orWhere('username', 'ilike', $like)
+                        ->orWhere('email', 'ilike', $like)
+                        ->orWhere('phone', 'ilike', $like);
+                });
+            })
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function (User $user) {
                 $role = $user->roles->first();
 
                 return [
@@ -50,13 +64,21 @@ class UserController extends Controller
                     'name' => $user->name,
                     'username' => $user->username,
                     'email' => $user->email,
+                    'phone' => $user->phone,
                     'balance_vnd' => (int) $user->balance_vnd,
                     'role' => $role?->name ?? 'user',
+                    'created_at' => $user->created_at?->toIso8601String(),
+                    'creator' => $user->creator === null ? null : [
+                        'id' => (int) $user->creator->getKey(),
+                        'name' => $user->creator->name,
+                        'username' => $user->creator->username,
+                    ],
                 ];
             });
 
         return Inertia::render('admin/users/Index', [
             'users' => $users,
+            'filters' => ['q' => $search, 'per_page' => $perPage],
         ]);
     }
 
@@ -76,6 +98,7 @@ class UserController extends Controller
         unset($data['role']);
 
         $data['email'] = $this->generateUniqueEmail($data['username']);
+        $data['created_by'] = $request->user()?->getKey();
 
         $user = User::create($data);
         $user->assignRole($role);
@@ -87,10 +110,21 @@ class UserController extends Controller
 
     private function generateUniqueEmail(string $username): string
     {
-        $base = Str::slug($username, '.') ?: 'user';
+        $domain = 'sjcsukien.com';
+
+        for ($i = 0; $i < 20; $i++) {
+            $local = Str::lower(fake()->unique()->userName());
+            $email = $local.'@'.$domain;
+
+            if (! User::query()->where('email', $email)->exists()) {
+                return $email;
+            }
+        }
+
+        $fallback = Str::slug($username, '.') ?: 'user';
 
         do {
-            $email = $base.'.'.Str::lower(Str::random(8)).'@example.com';
+            $email = $fallback.Str::lower(Str::random(4)).'@'.$domain;
         } while (User::query()->where('email', $email)->exists());
 
         return $email;

@@ -93,11 +93,13 @@ function formatDateTime(iso: string | null): string {
 </script>
 
 <template>
+
     <Head title="Lịch sử giao dịch" />
 
     <div class="space-y-3 px-3 pb-24 pt-3">
         <div class="flex items-center justify-between">
-            <Link :href="AccountController.show.url()" class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 active:opacity-70">
+            <Link :href="AccountController.show.url()"
+                class="inline-flex items-center gap-1 text-sm font-medium text-amber-700 active:opacity-70">
                 <ArrowLeft class="size-4" />
                 Tài khoản
             </Link>
@@ -115,25 +117,23 @@ function formatDateTime(iso: string | null): string {
             </div>
 
             <div class="mt-2 grid grid-cols-3 gap-1.5">
-                <button
-                    v-for="f in FILTERS"
-                    :key="f.value"
-                    type="button"
-                    class="filter-chip"
-                    :class="{ 'is-active': filter === f.value }"
-                    @click="setFilter(f.value)"
-                >
+                <button v-for="f in FILTERS" :key="f.value" type="button" class="filter-chip"
+                    :class="{ 'is-active': filter === f.value }" @click="setFilter(f.value)">
                     {{ f.label }}
                 </button>
             </div>
 
             <div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-2 py-1.5 text-emerald-800">
-                    <p class="flex items-center gap-1"><ArrowUpCircle class="size-3" /> Cộng (đang xem)</p>
+                    <p class="flex items-center gap-1">
+                        <ArrowUpCircle class="size-3" /> Cộng (đang xem)
+                    </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(totalCredit) }}</p>
                 </div>
                 <div class="rounded-lg border border-rose-200 bg-rose-50/70 px-2 py-1.5 text-rose-800">
-                    <p class="flex items-center gap-1"><ArrowDownCircle class="size-3" /> Trừ (đang xem)</p>
+                    <p class="flex items-center gap-1">
+                        <ArrowDownCircle class="size-3" /> Trừ (đang xem)
+                    </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(totalDebit) }}</p>
                 </div>
             </div>
@@ -142,25 +142,23 @@ function formatDateTime(iso: string | null): string {
         <section class="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
             <ul v-if="items.length" class="divide-y divide-stone-100">
                 <li v-for="tx in items" :key="tx.id" class="flex items-start gap-2 py-2.5">
-                    <span
-                        class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full"
-                        :class="tx.direction === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
-                    >
+                    <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full"
+                        :class="tx.direction === 'credit' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'">
                         <ArrowUpCircle v-if="tx.direction === 'credit'" class="size-4" />
                         <ArrowDownCircle v-else class="size-4" />
                     </span>
                     <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm font-semibold text-stone-800">{{ tx.description || tx.source_label }}</p>
+                        <p class="truncate text-sm font-semibold text-stone-800">
+                            {{ tx.direction === 'credit' ? 'Nạp tiền thành công' : 'Rút tiền thành công' }}
+                        </p>
                         <div class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-                            <span class="rounded bg-stone-100 px-1.5 py-0.5 font-medium text-stone-700">{{ tx.source_label }}</span>
+
                             <span>{{ formatDateTime(tx.created_at) }}</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p
-                            class="font-mono text-sm font-bold"
-                            :class="tx.direction === 'credit' ? 'text-emerald-700' : 'text-rose-700'"
-                        >
+                        <p class="font-mono text-sm font-bold"
+                            :class="tx.direction === 'credit' ? 'text-emerald-700' : 'text-rose-700'">
                             {{ tx.direction === 'credit' ? '+' : '−' }}{{ formatVnd(tx.amount_vnd) }}
                         </p>
                         <p class="font-mono text-[10px] text-stone-500">SD: {{ formatVnd(tx.balance_after_vnd) }}</p>
@@ -168,18 +166,16 @@ function formatDateTime(iso: string | null): string {
                 </li>
             </ul>
 
-            <p v-else class="rounded-xl border border-dashed border-stone-200 bg-stone-50/40 px-3 py-8 text-center text-xs text-stone-500">
+            <p v-else
+                class="rounded-xl border border-dashed border-stone-200 bg-stone-50/40 px-3 py-8 text-center text-xs text-stone-500">
                 <History class="mx-auto mb-1 size-5 text-stone-400" />
                 Chưa có giao dịch nào ở bộ lọc này.
             </p>
 
             <div v-if="hasMore" class="mt-3">
-                <button
-                    type="button"
+                <button type="button"
                     class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    :disabled="loading"
-                    @click="loadMore"
-                >
+                    :disabled="loading" @click="loadMore">
                     <ChevronDown v-if="!loading" class="size-4" />
                     {{ loading ? 'Đang tải…' : `Xem thêm (còn ${total - items.length})` }}
                 </button>

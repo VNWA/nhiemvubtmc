@@ -2,28 +2,31 @@
 
 namespace App\Http\Requests\Client;
 
-use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateAccountRequest extends FormRequest
 {
-    use ProfileValidationRules;
-
     public function authorize(): bool
     {
         return $this->user() !== null;
     }
 
     /**
-     * Trim whitespace on incoming text fields, mirroring the
-     * normalization the registration / admin flows already perform.
+     * Users can only edit their phone number from the client profile page;
+     * name & username are locked and any incoming values are stripped so
+     * request spoofing cannot bypass the UI restriction.
      */
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'name' => is_string($this->input('name')) ? trim((string) $this->input('name')) : $this->input('name'),
-            'username' => is_string($this->input('username')) ? trim((string) $this->input('username')) : $this->input('username'),
+        $phone = $this->input('phone');
+        if (is_string($phone)) {
+            $phone = preg_replace('/[\s\-()]+/', '', trim($phone));
+            $phone = $phone === '' ? null : $phone;
+        }
+
+        $this->replace([
+            'phone' => $phone,
         ]);
     }
 
@@ -32,11 +35,19 @@ class UpdateAccountRequest extends FormRequest
      */
     public function rules(): array
     {
-        $userId = (int) $this->user()->getKey();
-
         return [
-            'name' => $this->nameRules(),
-            'username' => $this->usernameRules($userId),
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9]{6,15}$/'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'phone.regex' => 'Số điện thoại chỉ được chứa chữ số, tối đa 15 chữ số (có thể bắt đầu bằng +).',
+            'phone.max' => 'Số điện thoại không được dài quá 20 ký tự.',
         ];
     }
 }

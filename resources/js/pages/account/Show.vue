@@ -110,6 +110,7 @@ function doLogout() {
 </script>
 
 <template>
+
     <Head title="Tài khoản" />
 
     <div class="space-y-4 px-3 pb-24 pt-3">
@@ -133,7 +134,7 @@ function doLogout() {
                 </div>
                 <div class="balance-chip">
                     <p class="balance-label flex items-center gap-1">
-                        <ArrowDownCircle class="size-3.5" /> Tổng chi
+                        <ArrowDownCircle class="size-3.5" /> Tổng rút
                     </p>
                     <p class="mt-0.5 font-mono font-semibold">{{ formatVnd(totals.totalDebitVnd) }}</p>
                 </div>
@@ -143,23 +144,16 @@ function doLogout() {
         <section class="rounded-2xl border border-stone-200 bg-white shadow-sm">
             <ul class="divide-y divide-stone-100">
                 <li v-for="item in menuItems" :key="item.href">
-                    <Link
-                        :href="item.href"
-                        class="flex items-center gap-3 px-3 py-3 transition active:bg-amber-50/70"
-                    >
-                        <span
-                            class="flex size-10 shrink-0 items-center justify-center rounded-xl"
-                            :class="[item.iconBg, item.iconColor]"
-                        >
+                    <Link :href="item.href" class="flex items-center gap-3 px-3 py-3 transition active:bg-amber-50/70">
+                        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl"
+                            :class="[item.iconBg, item.iconColor]">
                             <component :is="item.icon" class="size-5" />
                         </span>
                         <div class="min-w-0 flex-1">
                             <p class="flex items-center gap-1.5 text-sm font-semibold text-stone-800">
                                 {{ item.title }}
-                                <span
-                                    v-if="item.badge"
-                                    class="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700"
-                                >
+                                <span v-if="item.badge"
+                                    class="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
                                     {{ item.badge }}
                                 </span>
                             </p>
@@ -171,18 +165,11 @@ function doLogout() {
             </ul>
         </section>
 
-        <button
-            type="button"
-            class="logout-btn"
-            @click="doLogout"
-        >
+        <button type="button" class="logout-btn" @click="doLogout">
             <LogOut class="size-4" />
             Đăng xuất
         </button>
 
-        <p class="pb-2 text-center text-[11px] text-stone-400">
-            Vai trò: <b class="text-stone-600">{{ profile.role }}</b>
-        </p>
     </div>
 </template>
 

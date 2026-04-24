@@ -23,6 +23,8 @@ class WithdrawalController extends Controller
     {
         $status = $request->string('status')->toString();
         $allowedStatuses = array_map(fn (WithdrawalStatus $s) => $s->value, WithdrawalStatus::cases());
+        $perPage = (int) $request->integer('per_page', 15);
+        $perPage = max(5, min($perPage, 100));
 
         $query = WithdrawalRequest::query()
             ->with(['user:id,name,username', 'processor:id,name,username'])
@@ -32,28 +34,31 @@ class WithdrawalController extends Controller
             $query->where('status', $status);
         }
 
-        $items = $query->limit(200)->get()->map(fn (WithdrawalRequest $r) => [
-            'id' => $r->id,
-            'user' => $r->user ? [
-                'id' => $r->user->id,
-                'name' => $r->user->name,
-                'username' => $r->user->username,
-            ] : null,
-            'amount_vnd' => (int) $r->amount_vnd,
-            'bank_name' => $r->bank_name,
-            'bank_account_number' => $r->bank_account_number,
-            'bank_account_name' => $r->bank_account_name,
-            'note' => $r->note,
-            'admin_note' => $r->admin_note,
-            'status' => $r->status->value,
-            'status_label' => $r->status->label(),
-            'processor' => $r->processor ? [
-                'id' => $r->processor->id,
-                'name' => $r->processor->name,
-            ] : null,
-            'processed_at' => $r->processed_at?->toIso8601String(),
-            'created_at' => $r->created_at?->toIso8601String(),
-        ])->values()->all();
+        $items = $query
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (WithdrawalRequest $r) => [
+                'id' => $r->id,
+                'user' => $r->user ? [
+                    'id' => $r->user->id,
+                    'name' => $r->user->name,
+                    'username' => $r->user->username,
+                ] : null,
+                'amount_vnd' => (int) $r->amount_vnd,
+                'bank_name' => $r->bank_name,
+                'bank_account_number' => $r->bank_account_number,
+                'bank_account_name' => $r->bank_account_name,
+                'note' => $r->note,
+                'admin_note' => $r->admin_note,
+                'status' => $r->status->value,
+                'status_label' => $r->status->label(),
+                'processor' => $r->processor ? [
+                    'id' => $r->processor->id,
+                    'name' => $r->processor->name,
+                ] : null,
+                'processed_at' => $r->processed_at?->toIso8601String(),
+                'created_at' => $r->created_at?->toIso8601String(),
+            ]);
 
         $counts = WithdrawalRequest::query()
             ->selectRaw('status, COUNT(*) as total, COALESCE(SUM(amount_vnd), 0) as sum_amount')
@@ -65,6 +70,7 @@ class WithdrawalController extends Controller
             'items' => $items,
             'filter' => [
                 'status' => in_array($status, $allowedStatuses, true) ? $status : 'all',
+                'per_page' => $perPage,
             ],
             'statusOptions' => array_map(
                 fn (WithdrawalStatus $s) => ['value' => $s->value, 'label' => $s->label()],

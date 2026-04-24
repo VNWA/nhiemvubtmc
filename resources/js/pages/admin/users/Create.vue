@@ -42,45 +42,34 @@ defineOptions({
 <template>
     <Head title="Add user" />
 
-    <div class="p-4">
+    <div class="flex flex-col gap-6 p-4">
         <Heading
             variant="small"
-            class="mb-6"
-            title="Add user"
-            description="Create a new user and assign a role"
+            title="Thêm người dùng"
+            description="Tạo tài khoản mới và gán vai trò."
         />
 
         <Form
             v-bind="UserController.store.form()"
             :reset-on-success="['password', 'password_confirmation']"
-            class="max-w-md space-y-6"
+            class="max-w-2xl space-y-6 rounded-xl border border-border/60 bg-card p-5 shadow-sm"
             v-slot="{ errors, processing }"
         >
             <div class="grid gap-2">
-                <Label for="name">Name</Label>
-                <Input
-                    id="name"
-                    name="name"
-                    required
-                    autocomplete="name"
-                />
+                <Label for="name">Họ tên</Label>
+                <Input id="name" name="name" required autocomplete="name" />
                 <InputError :message="errors.name" />
             </div>
             <div class="grid gap-2">
-                <Label for="username">Username</Label>
-                <Input
-                    id="username"
-                    name="username"
-                    required
-                    autocomplete="username"
-                />
+                <Label for="username">Tên đăng nhập</Label>
+                <Input id="username" name="username" required autocomplete="username" />
                 <InputError :message="errors.username" />
                 <p class="text-xs text-muted-foreground">
-                    Email will be generated automatically.
+                    Email hệ thống sẽ được sinh tự động.
                 </p>
             </div>
             <div class="grid gap-2">
-                <Label for="role">Role</Label>
+                <Label for="role">Vai trò</Label>
                 <Select v-model="selectedRole">
                     <SelectTrigger id="role" class="w-full">
                         <SelectValue placeholder="Chọn vai trò" />
@@ -95,7 +84,7 @@ defineOptions({
                 <InputError :message="errors.role" />
             </div>
             <div class="grid gap-2">
-                <Label for="password">Password</Label>
+                <Label for="password">Mật khẩu</Label>
                 <PasswordInput
                     id="password"
                     name="password"
@@ -105,7 +94,7 @@ defineOptions({
                 <InputError :message="errors.password" />
             </div>
             <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm password</Label>
+                <Label for="password_confirmation">Nhập lại mật khẩu</Label>
                 <PasswordInput
                     id="password_confirmation"
                     name="password_confirmation"
@@ -116,10 +105,10 @@ defineOptions({
             <div class="flex gap-2">
                 <Button type="submit" :disabled="processing">
                     <Spinner v-if="processing" />
-                    Create user
+                    Tạo người dùng
                 </Button>
                 <Button variant="secondary" as-child>
-                    <Link :href="UserController.index.url()">Cancel</Link>
+                    <Link :href="UserController.index.url()">Hủy</Link>
                 </Button>
             </div>
         </Form>

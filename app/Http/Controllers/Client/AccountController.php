@@ -270,7 +270,7 @@ class AccountController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, username: string, email: string, created_at: ?string, role: string}
+     * @return array{id: int, name: string, username: string, email: string, phone: ?string, created_at: ?string, role: string}
      */
     private function profilePayload(User $user): array
     {
@@ -279,6 +279,7 @@ class AccountController extends Controller
             'name' => $user->name,
             'username' => $user->username,
             'email' => $user->email,
+            'phone' => $user->phone,
             'created_at' => $user->created_at?->toIso8601String(),
             'role' => $user->roles->first()?->name ?? 'user',
         ];

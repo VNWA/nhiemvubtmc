@@ -11,6 +11,7 @@ const props = defineProps<{
         name: string;
         username: string;
         email: string;
+        phone: string | null;
         created_at: string | null;
         role: string;
     };
@@ -20,12 +21,20 @@ const page = usePage();
 const flash = computed(() => (page.props as { flash?: { success?: string } }).flash ?? {});
 
 const form = useForm({
-    name: props.profile.name,
-    username: props.profile.username,
+    phone: props.profile.phone ?? '',
 });
 
 function submit() {
     form.patch(AccountController.updateProfile.url(), { preserveScroll: true });
+}
+
+function onPhoneInput(e: Event) {
+    const el = e.target as HTMLInputElement;
+    const cleaned = el.value.replace(/[^0-9+]/g, '');
+    if (el.value !== cleaned) {
+        el.value = cleaned;
+    }
+    form.phone = cleaned;
 }
 </script>
 
@@ -33,7 +42,7 @@ function submit() {
     <Head title="Thông tin tài khoản" />
 
     <div class="space-y-3 px-3 pb-24 pt-3">
-        <AccountPageHeader title="Thông tin tài khoản" description="Cập nhật họ tên và tên đăng nhập" />
+        <AccountPageHeader title="Thông tin tài khoản" description="Xem thông tin tài khoản và cập nhật số điện thoại" />
 
         <div v-if="flash.success" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {{ flash.success }}
@@ -41,35 +50,41 @@ function submit() {
 
         <form class="space-y-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm" @submit.prevent="submit">
             <div>
-                <label for="name" class="account-label">Họ tên</label>
-                <input
-                    id="name"
-                    v-model="form.name"
-                    type="text"
-                    autocomplete="name"
-                    class="account-input"
-                    :class="{ 'is-invalid': form.errors.name }"
-                />
-                <p v-if="form.errors.name" class="account-error">{{ form.errors.name }}</p>
+                <label class="account-label">Họ tên</label>
+                <input :value="profile.name" type="text" class="account-input is-readonly" readonly />
+                <p class="mt-1 text-[11px] text-stone-500">Liên hệ quản trị viên nếu cần đổi họ tên.</p>
             </div>
 
             <div>
-                <label for="username" class="account-label">Tên đăng nhập</label>
-                <input
-                    id="username"
-                    v-model="form.username"
-                    type="text"
-                    autocomplete="username"
-                    class="account-input"
-                    :class="{ 'is-invalid': form.errors.username }"
-                />
-                <p v-if="form.errors.username" class="account-error">{{ form.errors.username }}</p>
+                <label class="account-label">Tên đăng nhập</label>
+                <input :value="profile.username" type="text" class="account-input is-readonly" readonly />
+                <p class="mt-1 text-[11px] text-stone-500">Tên đăng nhập không thể thay đổi.</p>
             </div>
 
             <div>
                 <label class="account-label">Email hệ thống</label>
                 <input :value="profile.email" type="text" class="account-input is-readonly" readonly />
                 <p class="mt-1 text-[11px] text-stone-500">Email do hệ thống cấp, không thể thay đổi.</p>
+            </div>
+
+            <div>
+                <label for="phone" class="account-label">Số điện thoại</label>
+                <input
+                    id="phone"
+                    :value="form.phone"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="tel"
+                    maxlength="20"
+                    placeholder="VD: 0901234567"
+                    class="account-input"
+                    :class="{ 'is-invalid': form.errors.phone }"
+                    @input="onPhoneInput"
+                />
+                <p v-if="form.errors.phone" class="account-error">{{ form.errors.phone }}</p>
+                <p v-else class="mt-1 text-[11px] text-stone-500">
+                    Dùng cho xác minh giao dịch và liên lạc khi cần.
+                </p>
             </div>
 
             <button

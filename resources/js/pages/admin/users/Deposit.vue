@@ -67,12 +67,17 @@ function formatDate(iso: string | null): string {
 }
 
 function sourceChipClass(src: string): string {
-    if (src === 'admin_credit') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-    if (src === 'admin_debit') return 'bg-rose-50 text-rose-700 border-rose-200';
-    if (src === 'bet_place') return 'bg-sky-50 text-sky-800 border-sky-200';
-    if (src === 'bet_cancel') return 'bg-indigo-50 text-indigo-800 border-indigo-200';
-    if (src === 'withdrawal') return 'bg-amber-50 text-amber-800 border-amber-200';
-    return 'bg-stone-50 text-stone-700 border-stone-200';
+    if (src === 'admin_credit')
+        return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300';
+    if (src === 'admin_debit')
+        return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300';
+    if (src === 'bet_place')
+        return 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300';
+    if (src === 'bet_cancel')
+        return 'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300';
+    if (src === 'withdrawal')
+        return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300';
+    return 'border-border/60 bg-muted/40 text-foreground/80';
 }
 
 defineOptions({
@@ -86,15 +91,13 @@ defineOptions({
 </script>
 
 <template>
+
     <Head :title="`Nạp tiền · ${user.name}`" />
 
     <div class="flex flex-col gap-4 p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <Heading
-                variant="small"
-                title="Nạp / trừ số dư người dùng"
-                description="Điều chỉnh số dư và theo dõi toàn bộ lịch sử giao dịch của tài khoản."
-            />
+            <Heading variant="small" title="Nạp / trừ số dư người dùng"
+                description="Điều chỉnh số dư và theo dõi toàn bộ lịch sử giao dịch của tài khoản." />
             <Button variant="outline" as-child>
                 <Link :href="UserController.index.url()">
                     <ArrowLeft class="size-4" /> Quay lại danh sách
@@ -106,11 +109,12 @@ defineOptions({
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0 flex-1">
                     <p class="user-eyebrow">Đang thao tác với</p>
-                    <h2 class="mt-0.5 text-lg font-bold text-stone-900">{{ user.name }}</h2>
-                    <p class="mt-0.5 text-xs text-stone-500">
+                    <h2 class="mt-0.5 text-lg font-bold text-foreground">{{ user.name }}</h2>
+                    <p class="mt-0.5 text-xs text-muted-foreground">
                         <span class="font-mono">@{{ user.username }}</span>
                         <span class="mx-1.5">·</span>
-                        <span class="inline-flex rounded-md bg-stone-100 px-2 py-0.5 text-[11px] capitalize text-stone-700">
+                        <span
+                            class="inline-flex rounded-md bg-secondary px-2 py-0.5 text-[11px] capitalize text-secondary-foreground">
                             {{ user.role }}
                         </span>
                     </p>
@@ -137,7 +141,7 @@ defineOptions({
                 <div class="stat-chip stat-debit">
                     <ArrowDownCircle class="size-4" />
                     <div class="min-w-0">
-                        <p class="stat-eyebrow">Tổng chi</p>
+                        <p class="stat-eyebrow">Tổng rút</p>
                         <p class="stat-amount">{{ formatVnd(summary.debit_total) }}</p>
                         <p class="stat-sub">{{ summary.debit_count }} giao dịch</p>
                     </div>
@@ -146,7 +150,10 @@ defineOptions({
                     <Coins class="size-4" />
                     <div class="min-w-0">
                         <p class="stat-eyebrow">Chênh lệch</p>
-                        <p class="stat-amount" :class="netTotal >= 0 ? 'text-emerald-700' : 'text-rose-700'">
+                        <p
+                            class="stat-amount"
+                            :class="netTotal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'"
+                        >
                             {{ netTotal >= 0 ? '+' : '' }}{{ formatVnd(netTotal) }}
                         </p>
                         <p class="stat-sub">Nạp − Chi</p>
@@ -157,47 +164,27 @@ defineOptions({
 
         <div class="grid gap-4 lg:grid-cols-5">
             <section class="lg:col-span-2">
-                <div class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-                    <h3 class="text-base font-bold text-stone-900">Nạp / trừ số dư</h3>
-                    <p class="mt-0.5 text-xs text-stone-500">
+                <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                    <h3 class="text-base font-bold text-foreground">Nạp / trừ số dư</h3>
+                    <p class="mt-0.5 text-xs text-muted-foreground">
                         Chọn nhanh số tiền hoặc nhập tuỳ ý. Ghi chú sẽ được lưu vào lịch sử.
                     </p>
 
-                    <Form
-                        v-bind="UserController.adjustBalance.form({ user: user.id })"
-                        class="mt-4 space-y-3"
-                        v-slot="{ errors, processing }"
-                        @success="resetAdjust"
-                    >
+                    <Form v-bind="UserController.adjustBalance.form({ user: user.id })" class="mt-4 space-y-3"
+                        v-slot="{ errors, processing }" @success="resetAdjust">
                         <div class="grid gap-1.5">
                             <Label>Loại điều chỉnh</Label>
                             <div class="flex gap-2">
-                                <label
-                                    class="op-chip"
-                                    :class="adjustOperation === 'credit' ? 'op-chip--credit-active' : ''"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="operation"
-                                        value="credit"
-                                        class="hidden"
-                                        :checked="adjustOperation === 'credit'"
-                                        @change="adjustOperation = 'credit'"
-                                    />
+                                <label class="op-chip"
+                                    :class="adjustOperation === 'credit' ? 'op-chip--credit-active' : ''">
+                                    <input type="radio" name="operation" value="credit" class="hidden"
+                                        :checked="adjustOperation === 'credit'" @change="adjustOperation = 'credit'" />
                                     <ArrowUpCircle class="size-4" /> Nạp tiền
                                 </label>
-                                <label
-                                    class="op-chip"
-                                    :class="adjustOperation === 'debit' ? 'op-chip--debit-active' : ''"
-                                >
-                                    <input
-                                        type="radio"
-                                        name="operation"
-                                        value="debit"
-                                        class="hidden"
-                                        :checked="adjustOperation === 'debit'"
-                                        @change="adjustOperation = 'debit'"
-                                    />
+                                <label class="op-chip"
+                                    :class="adjustOperation === 'debit' ? 'op-chip--debit-active' : ''">
+                                    <input type="radio" name="operation" value="debit" class="hidden"
+                                        :checked="adjustOperation === 'debit'" @change="adjustOperation = 'debit'" />
                                     <ArrowDownCircle class="size-4" /> Trừ tiền
                                 </label>
                             </div>
@@ -206,22 +193,12 @@ defineOptions({
 
                         <div class="grid gap-1.5">
                             <Label for="amount_vnd">Số tiền (VNĐ)</Label>
-                            <CurrencyInput
-                                id="amount_vnd"
-                                v-model="adjustAmount"
-                                name="amount_vnd"
-                                placeholder="VD: 100.000"
-                                :aria-invalid="!!errors.amount_vnd"
-                            />
+                            <CurrencyInput id="amount_vnd" v-model="adjustAmount" name="amount_vnd"
+                                placeholder="VD: 100.000" :aria-invalid="!!errors.amount_vnd" />
                             <InputError :message="errors.amount_vnd" />
                             <div class="flex flex-wrap gap-1.5 pt-1">
-                                <button
-                                    v-for="v in quickAmounts"
-                                    :key="v"
-                                    type="button"
-                                    class="quick-btn"
-                                    @click="pickQuick(v)"
-                                >
+                                <button v-for="v in quickAmounts" :key="v" type="button" class="quick-btn"
+                                    @click="pickQuick(v)">
                                     {{ formatVnd(v) }}
                                 </button>
                             </div>
@@ -234,21 +211,13 @@ defineOptions({
                         </div>
 
                         <div class="flex items-center gap-2 pt-1">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                class="flex-1"
-                                :disabled="processing"
-                                @click="resetAdjust"
-                            >
+                            <Button type="button" variant="outline" class="flex-1" :disabled="processing"
+                                @click="resetAdjust">
                                 <RotateCcw class="size-4" /> Đặt lại
                             </Button>
-                            <Button
-                                type="submit"
-                                class="flex-[1.4]"
+                            <Button type="submit" class="flex-[1.4]"
                                 :class="adjustOperation === 'credit' ? 'submit-credit' : 'submit-debit'"
-                                :disabled="processing || adjustAmount <= 0"
-                            >
+                                :disabled="processing || adjustAmount <= 0">
                                 <Spinner v-if="processing" />
                                 {{ adjustOperation === 'credit' ? 'Xác nhận nạp' : 'Xác nhận trừ' }}
                             </Button>
@@ -258,22 +227,31 @@ defineOptions({
             </section>
 
             <section class="lg:col-span-3">
-                <div class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-                    <header class="flex items-center justify-between border-b border-stone-100 px-4 py-2.5">
+                <div class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
+                    <header
+                        class="flex items-center justify-between border-b border-border/60 px-4 py-2.5"
+                    >
                         <div>
-                            <h3 class="text-sm font-bold text-stone-900">Lịch sử giao dịch</h3>
-                            <p class="text-xs text-stone-500">100 giao dịch gần nhất</p>
+                            <h3 class="text-sm font-bold text-foreground">Lịch sử giao dịch</h3>
+                            <p class="text-xs text-muted-foreground">100 giao dịch gần nhất</p>
                         </div>
-                        <span class="text-xs font-mono text-stone-500">#{{ transactions.length }}</span>
+                        <span class="font-mono text-xs text-muted-foreground">
+                            #{{ transactions.length }}
+                        </span>
                     </header>
 
-                    <div v-if="transactions.length === 0" class="px-4 py-10 text-center text-sm text-stone-500">
+                    <div
+                        v-if="transactions.length === 0"
+                        class="px-4 py-10 text-center text-sm text-muted-foreground"
+                    >
                         Chưa có giao dịch nào.
                     </div>
 
                     <div v-else class="max-h-128 overflow-auto">
                         <table class="w-full text-sm">
-                            <thead class="sticky top-0 z-10 bg-stone-50 text-xs uppercase tracking-wide text-stone-500">
+                            <thead
+                                class="sticky top-0 z-10 bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground backdrop-blur"
+                            >
                                 <tr>
                                     <th class="px-3 py-2 text-left">Loại</th>
                                     <th class="px-3 py-2 text-right">Số tiền</th>
@@ -282,14 +260,14 @@ defineOptions({
                                     <th class="px-3 py-2 text-left">Thời gian</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-stone-100">
+                            <tbody class="divide-y divide-border/60">
                                 <tr v-for="t in transactions" :key="t.id" class="align-top">
                                     <td class="px-3 py-2">
                                         <span
                                             class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
                                             :class="t.direction === 'credit'
-                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                                : 'bg-rose-50 text-rose-700 border-rose-200'"
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300'"
                                         >
                                             <component
                                                 :is="t.direction === 'credit' ? ArrowUpCircle : ArrowDownCircle"
@@ -300,7 +278,9 @@ defineOptions({
                                     </td>
                                     <td
                                         class="px-3 py-2 text-right font-mono font-bold"
-                                        :class="t.direction === 'credit' ? 'text-emerald-700' : 'text-rose-700'"
+                                        :class="t.direction === 'credit'
+                                            ? 'text-emerald-700 dark:text-emerald-400'
+                                            : 'text-rose-700 dark:text-rose-400'"
                                     >
                                         {{ t.direction === 'credit' ? '+' : '−' }}{{ formatVnd(t.amount_vnd) }}
                                     </td>
@@ -311,14 +291,19 @@ defineOptions({
                                         >
                                             {{ t.source_label }}
                                         </span>
-                                        <p v-if="t.description" class="mt-1 text-[11px] text-stone-500">
+                                        <p
+                                            v-if="t.description"
+                                            class="mt-1 text-[11px] text-muted-foreground"
+                                        >
                                             {{ t.description }}
                                         </p>
                                     </td>
-                                    <td class="px-3 py-2 text-right font-mono text-xs text-stone-700">
+                                    <td class="px-3 py-2 text-right font-mono text-xs text-foreground/80">
                                         {{ formatVnd(t.balance_after_vnd) }}
                                     </td>
-                                    <td class="px-3 py-2 text-xs text-stone-500">{{ formatDate(t.created_at) }}</td>
+                                    <td class="px-3 py-2 text-xs text-muted-foreground">
+                                        {{ formatDate(t.created_at) }}
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -332,10 +317,14 @@ defineOptions({
 <style scoped>
 .user-card {
     border-radius: 1rem;
-    border: 1px solid var(--border, #dbe4ed);
-    background: #ffffff;
+    border: 1px solid var(--border);
+    background: var(--card);
     padding: 1rem 1.125rem;
     box-shadow: 0 6px 18px -12px rgba(13, 79, 158, 0.2);
+}
+
+:global(.dark) .user-card {
+    box-shadow: 0 6px 20px -12px rgba(0, 0, 0, 0.55);
 }
 
 .user-eyebrow {
@@ -343,7 +332,11 @@ defineOptions({
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--primary-1, #0d4f9e);
+    color: #0d4f9e;
+}
+
+:global(.dark) .user-eyebrow {
+    color: #60a5fa;
 }
 
 .user-balance {
@@ -389,7 +382,25 @@ defineOptions({
 .stat-net {
     background: #f3f7fc;
     border-color: #dbe4ed;
-    color: var(--primary-1, #0d4f9e);
+    color: #0d4f9e;
+}
+
+:global(.dark) .stat-credit {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #6ee7b7;
+}
+
+:global(.dark) .stat-debit {
+    background: rgba(244, 63, 94, 0.12);
+    border-color: rgba(244, 63, 94, 0.35);
+    color: #fda4af;
+}
+
+:global(.dark) .stat-net {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
 }
 
 .stat-eyebrow {
@@ -421,17 +432,17 @@ defineOptions({
     gap: 0.375rem;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    border: 1.5px solid var(--border, #dbe4ed);
-    background: #ffffff;
+    border: 1.5px solid var(--border);
+    background: var(--background);
     font-size: 0.8125rem;
     font-weight: 600;
-    color: var(--text-body, #102a43);
+    color: var(--foreground);
     cursor: pointer;
     transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .op-chip:hover {
-    border-color: var(--primary-1, #0d4f9e);
+    border-color: var(--primary);
 }
 
 .op-chip--credit-active {
@@ -446,6 +457,18 @@ defineOptions({
     color: #9f1239;
 }
 
+:global(.dark) .op-chip--credit-active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #6ee7b7;
+}
+
+:global(.dark) .op-chip--debit-active {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: #f43f5e;
+    color: #fda4af;
+}
+
 .quick-btn {
     display: inline-flex;
     align-items: center;
@@ -455,15 +478,27 @@ defineOptions({
     font-size: 0.75rem;
     font-weight: 700;
     background: #f3f7fc;
-    color: var(--primary-1, #0d4f9e);
+    color: #0d4f9e;
     border: 1px solid rgba(13, 79, 158, 0.15);
     transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
 .quick-btn:hover:not(:disabled) {
-    background: var(--primary-1, #0d4f9e);
+    background: #0d4f9e;
     color: #ffffff;
-    border-color: var(--primary-1, #0d4f9e);
+    border-color: #0d4f9e;
+}
+
+:global(.dark) .quick-btn {
+    background: rgba(59, 130, 246, 0.1);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+:global(.dark) .quick-btn:hover:not(:disabled) {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
 }
 
 .submit-credit {

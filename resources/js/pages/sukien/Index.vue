@@ -15,7 +15,7 @@ defineProps<{
     <Head title="Sự kiện" />
     <div class="px-3 pb-8 pt-1">
         <h2 class="mb-1 text-center text-base font-bold text-stone-800">Danh sách sự kiện</h2>
-        <p class="mb-4 text-center text-sm text-stone-500">Chọn phòng để tham gia</p>
+        <p class="mb-4 text-center text-sm text-stone-500">Chọn sự kiện để tham gia</p>
         <ul v-if="rooms.length" class="space-y-2">
             <li v-for="r in rooms" :key="r.id">
                 <Link :href="SukienEventRoomController.show.url(r.slug)"

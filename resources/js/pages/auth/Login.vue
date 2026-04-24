@@ -48,9 +48,7 @@ defineProps<{
         <div class="grid gap-2">
             <div class="flex items-center justify-between">
                 <Label for="password" class="login-label">Mật khẩu</Label>
-                <TextLink v-if="canResetPassword" :href="request()" class="login-link text-xs" :tabindex="5">
-                    Quên mật khẩu?
-                </TextLink>
+
             </div>
             <PasswordInput id="password" name="password" required :tabindex="2" autocomplete="current-password"
                 placeholder="Nhập mật khẩu" class="login-input" />
@@ -62,6 +60,9 @@ defineProps<{
                 <Checkbox id="remember" name="remember" :tabindex="3" />
                 <span>Ghi nhớ đăng nhập</span>
             </Label>
+            <TextLink v-if="canResetPassword" :href="request()" class="login-link text-xs text-stone-700" :tabindex="5">
+                Quên mật khẩu?
+            </TextLink>
         </div>
 
         <Button type="submit" class="login-submit" :tabindex="4" :disabled="processing" data-test="login-button">
@@ -80,22 +81,54 @@ defineProps<{
     font-weight: 600;
 }
 
-.login-input :deep(input),
-.login-input {
+/* Pierce scoped boundary so rules apply to <input> inside Input/PasswordInput children */
+:deep(.login-input) {
     height: 2.75rem;
     border-width: 1.5px;
     border-color: var(--border, #dbe4ed);
-    background: #ffffff;
+    background-color: #ffffff !important;
     color: var(--text-body, #102a43);
     font-size: 0.9375rem;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
-.login-input:focus,
-.login-input :deep(input:focus) {
+:deep(.login-input::placeholder) {
+    color: #94a3b8;
+}
+
+:deep(.login-input:hover) {
+    border-color: rgba(13, 79, 158, 0.35) !important;
+}
+
+:deep(.login-input:focus),
+:deep(.login-input:focus-visible) {
     border-color: var(--primary-1, #0d4f9e) !important;
     box-shadow: 0 0 0 3px rgba(13, 79, 158, 0.16) !important;
     outline: none !important;
+    background-color: #ffffff !important;
+}
+
+:deep(.login-input:-webkit-autofill),
+:deep(.login-input:-webkit-autofill:hover),
+:deep(.login-input:-webkit-autofill:focus) {
+    -webkit-text-fill-color: var(--text-body, #102a43) !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    caret-color: var(--text-body, #102a43);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Password toggle eye button */
+:deep(.login-input) ~ button,
+:deep(button[aria-label='Hide password']),
+:deep(button[aria-label='Show password']) {
+    color: var(--primary-1, #0d4f9e);
+}
+
+:deep(button[aria-label='Hide password']:hover),
+:deep(button[aria-label='Show password']:hover) {
+    color: var(--primary-1-hover, #0a3d7b);
 }
 
 .login-link {

@@ -325,3 +325,39 @@
     border-color: rgba(232, 165, 0, 0.45);
     color: #7a5800;
 }
+
+/* ------------------------------------------------------------------ */
+/* Account Select dropdown — forced light theme.                      */
+/* SelectContent is rendered into a portal on <body>, so scoped CSS   */
+/* cannot reach it; these rules are global on purpose.                */
+/* ------------------------------------------------------------------ */
+.account-select-content {
+    background: #ffffff !important;
+    color: rgb(28 25 23) !important;
+    border: 1px solid rgb(231 229 228) !important;
+    box-shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06) !important;
+    border-radius: 0.625rem !important;
+}
+
+.account-select-item {
+    color: rgb(28 25 23) !important;
+    cursor: pointer;
+    border-radius: 0.375rem !important;
+}
+
+.account-select-item[data-highlighted],
+.account-select-item:hover {
+    background: rgb(254 243 199) !important;
+    color: rgb(146 64 14) !important;
+    outline: none !important;
+}
+
+.account-select-item[data-state='checked'] {
+    background: rgb(254 243 199) !important;
+    color: rgb(146 64 14) !important;
+    font-weight: 600;
+}
+
+.account-select-item svg {
+    color: rgb(217 119 6) !important;
+}
