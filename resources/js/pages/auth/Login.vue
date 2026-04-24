@@ -15,7 +15,7 @@ import { LogIn } from 'lucide-vue-next';
 
 defineOptions({
     layout: {
-        title: 'Đăng nhập JSC',
+        title: 'Đăng nhập SJC Sự Kiện',
         description: 'Nhập tên đăng nhập và mật khẩu để truy cập tài khoản của bạn.',
     },
 });
