@@ -39,7 +39,14 @@ type RoundHistory = {
 const QUICK_AMOUNTS = [100_000, 300_000, 400_000, 500_000];
 
 const props = defineProps<{
-    eventRoom: { id: number; name: string; slug: string; avatar_url: string | null; is_active: boolean };
+    eventRoom: {
+        id: number;
+        name: string;
+        slug: string;
+        avatar_url: string | null;
+        is_active: boolean;
+        viewer_offset: number;
+    };
     options: Opt[];
     openRound: OpenRoundT | null;
     recentRounds: RoundHistory[];
@@ -71,6 +78,10 @@ function syncPresenceList() {
     presenceCount.value = presenceMembers.length;
     presenceNames.value = presenceMembers.map((m) => m.name);
 }
+
+const displayedPresenceCount = computed(
+    () => presenceCount.value + (props.eventRoom.viewer_offset ?? 0),
+);
 
 const remainingMs = computed(() => {
     const end = liveOpenRound.value?.auto_end_at;
@@ -361,7 +372,7 @@ async function loadMoreRounds() {
                     </h2>
                     <p class="flex items-center gap-1 text-xs text-stone-500">
                         <Users class="size-3" />
-                        <span>{{ presenceCount }} đang xem</span>
+                        <span>{{ displayedPresenceCount }} đang xem</span>
                     </p>
                 </div>
             </div>
@@ -413,7 +424,7 @@ async function loadMoreRounds() {
         </section>
         <section v-else
             class="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-2 text-center text-xs text-stone-600">
-            Chưa có kỳ nào đang mở. Vui lòng đợi quản trị bắt đầu kỳ mới.
+            Chưa có kỳ nào đang mở. Vui lòng đợi kỳ mới.
         </section>
 
         <section v-if="liveOpenRound && !isAdmin" class="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
@@ -471,51 +482,30 @@ async function loadMoreRounds() {
                 </div>
 
                 <div>
-                    <label
-                        for="vnd-amount"
-                        class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-600"
-                    >
+                    <label for="vnd-amount"
+                        class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-600">
                         Số tiền cược
                     </label>
-                    <CurrencyInput
-                        id="vnd-amount"
-                        v-model="amountVnd"
-                        :max="liveBalance"
-                        :aria-invalid="insufficientBalance"
-                        input-class="bet-amount-input"
-                    />
+                    <CurrencyInput id="vnd-amount" v-model="amountVnd" :max="liveBalance"
+                        :aria-invalid="insufficientBalance" input-class="bet-amount-input" />
 
                     <div class="mt-2 grid grid-cols-4 gap-1.5">
-                        <button
-                            v-for="amt in QUICK_AMOUNTS"
-                            :key="amt"
-                            type="button"
-                            class="quick-chip"
-                            :class="{ 'is-active': amountVnd === amt }"
-                            :disabled="amt > liveBalance"
-                            @click="setAmount(amt)"
-                        >
+                        <button v-for="amt in QUICK_AMOUNTS" :key="amt" type="button" class="quick-chip"
+                            :class="{ 'is-active': amountVnd === amt }" :disabled="amt > liveBalance"
+                            @click="setAmount(amt)">
                             {{ amt >= 1_000_000 ? `${amt / 1_000_000}M` : `${amt / 1_000}K` }}
                         </button>
                     </div>
 
                     <div class="mt-3 flex gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
+                        <Button type="button" variant="outline" size="sm"
                             class="h-10 flex-1 rounded-lg border-stone-300 text-stone-700 hover:bg-stone-50"
-                            :disabled="amountVnd === 0"
-                            @click="resetAmount"
-                        >
+                            :disabled="amountVnd === 0" @click="resetAmount">
                             Đặt lại
                         </Button>
                         <Button
                             class="h-10 flex-2 rounded-lg bg-amber-600 text-base font-semibold text-white shadow-sm hover:bg-amber-700"
-                            size="sm"
-                            :disabled="!canPlaceBet || betForm.processing"
-                            @click="submitBet"
-                        >
+                            size="sm" :disabled="!canPlaceBet || betForm.processing" @click="submitBet">
                             {{ betForm.processing ? 'Đang gửi…' : 'Xác nhận đặt' }}
                         </Button>
                     </div>
@@ -545,7 +535,7 @@ async function loadMoreRounds() {
                 <li v-for="h in displayedRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5">
                     <span class="text-xs text-stone-700">Kỳ #{{ h.round_number }}</span>
-                    <span class="rounded px-1.5 py-0.5 text-[11px] font-medium" :style="{
+                    <span class="rounded px-1.5 py-0.5 text-[11px] font-medium capitalize" :style="{
                         backgroundColor: h.preset.bg_color,
                         color: h.preset.text_color,
                     }">

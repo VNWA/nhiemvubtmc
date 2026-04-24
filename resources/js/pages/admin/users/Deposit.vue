@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Coins, RotateCcw, Wallet } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Coins, Gift, RotateCcw, Wallet } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import CurrencyInput from '@/components/CurrencyInput.vue';
 import Heading from '@/components/Heading.vue';
@@ -38,13 +38,24 @@ const props = defineProps<{
         credit_count: number;
         debit_total: number;
         debit_count: number;
+        commission_total: number;
+        commission_count: number;
     };
 }>();
 
 const quickAmounts = [100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
 
+type Operation = 'credit' | 'debit' | 'commission';
+
+const DEFAULT_NOTE: Record<Operation, string> = {
+    credit: 'Nạp tiền thành công',
+    debit: 'Rút tiền thành công',
+    commission: 'Thưởng hoa hồng',
+};
+
 const adjustAmount = ref<number>(0);
-const adjustOperation = ref<'credit' | 'debit'>('credit');
+const adjustOperation = ref<Operation>('credit');
+const adjustNote = ref<string>(DEFAULT_NOTE.credit);
 
 const netTotal = computed(() => props.summary.credit_total - props.summary.debit_total);
 
@@ -55,7 +66,27 @@ function pickQuick(v: number) {
 function resetAdjust() {
     adjustAmount.value = 0;
     adjustOperation.value = 'credit';
+    adjustNote.value = DEFAULT_NOTE.credit;
 }
+
+watch(adjustOperation, (next, prev) => {
+    const prevDefault = DEFAULT_NOTE[prev];
+    if (!adjustNote.value || adjustNote.value === prevDefault) {
+        adjustNote.value = DEFAULT_NOTE[next];
+    }
+});
+
+const submitLabel = computed(() => {
+    if (adjustOperation.value === 'credit') return 'Xác nhận nạp';
+    if (adjustOperation.value === 'debit') return 'Xác nhận trừ';
+    return 'Xác nhận hoa hồng';
+});
+
+const submitClass = computed(() => {
+    if (adjustOperation.value === 'credit') return 'submit-credit';
+    if (adjustOperation.value === 'debit') return 'submit-debit';
+    return 'submit-commission';
+});
 
 function formatDate(iso: string | null): string {
     if (!iso) return '—';
@@ -71,6 +102,8 @@ function sourceChipClass(src: string): string {
         return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300';
     if (src === 'admin_debit')
         return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300';
+    if (src === 'commission')
+        return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-300';
     if (src === 'bet_place')
         return 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300';
     if (src === 'bet_cancel')
@@ -129,7 +162,7 @@ defineOptions({
                 </div>
             </div>
 
-            <div class="mt-4 grid grid-cols-3 gap-2">
+            <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div class="stat-chip stat-credit">
                     <ArrowUpCircle class="size-4" />
                     <div class="min-w-0">
@@ -144,6 +177,14 @@ defineOptions({
                         <p class="stat-eyebrow">Tổng rút</p>
                         <p class="stat-amount">{{ formatVnd(summary.debit_total) }}</p>
                         <p class="stat-sub">{{ summary.debit_count }} giao dịch</p>
+                    </div>
+                </div>
+                <div class="stat-chip stat-commission">
+                    <Gift class="size-4" />
+                    <div class="min-w-0">
+                        <p class="stat-eyebrow">Hoa hồng</p>
+                        <p class="stat-amount">{{ formatVnd(summary.commission_total) }}</p>
+                        <p class="stat-sub">{{ summary.commission_count }} lượt thưởng</p>
                     </div>
                 </div>
                 <div class="stat-chip stat-net">
@@ -174,7 +215,7 @@ defineOptions({
                         v-slot="{ errors, processing }" @success="resetAdjust">
                         <div class="grid gap-1.5">
                             <Label>Loại điều chỉnh</Label>
-                            <div class="flex gap-2">
+                            <div class="flex flex-wrap gap-2">
                                 <label class="op-chip"
                                     :class="adjustOperation === 'credit' ? 'op-chip--credit-active' : ''">
                                     <input type="radio" name="operation" value="credit" class="hidden"
@@ -186,6 +227,13 @@ defineOptions({
                                     <input type="radio" name="operation" value="debit" class="hidden"
                                         :checked="adjustOperation === 'debit'" @change="adjustOperation = 'debit'" />
                                     <ArrowDownCircle class="size-4" /> Trừ tiền
+                                </label>
+                                <label class="op-chip"
+                                    :class="adjustOperation === 'commission' ? 'op-chip--commission-active' : ''">
+                                    <input type="radio" name="operation" value="commission" class="hidden"
+                                        :checked="adjustOperation === 'commission'"
+                                        @change="adjustOperation = 'commission'" />
+                                    <Gift class="size-4" /> Thưởng hoa hồng
                                 </label>
                             </div>
                             <InputError :message="errors.operation" />
@@ -205,8 +253,18 @@ defineOptions({
                         </div>
 
                         <div class="grid gap-1.5">
-                            <Label for="note">Ghi chú (tuỳ chọn)</Label>
-                            <Input id="note" name="note" maxlength="255" placeholder="VD: Nạp thưởng sự kiện" />
+                            <Label for="note">Ghi chú</Label>
+                            <Input
+                                id="note"
+                                v-model="adjustNote"
+                                name="note"
+                                maxlength="255"
+                                :placeholder="DEFAULT_NOTE[adjustOperation]"
+                            />
+                            <p class="text-[11px] text-muted-foreground">
+                                Ghi chú sẽ hiển thị ở tab lịch sử giao dịch của user. Mặc định:
+                                <span class="font-semibold">{{ DEFAULT_NOTE[adjustOperation] }}</span>.
+                            </p>
                             <InputError :message="errors.note" />
                         </div>
 
@@ -216,10 +274,10 @@ defineOptions({
                                 <RotateCcw class="size-4" /> Đặt lại
                             </Button>
                             <Button type="submit" class="flex-[1.4]"
-                                :class="adjustOperation === 'credit' ? 'submit-credit' : 'submit-debit'"
+                                :class="submitClass"
                                 :disabled="processing || adjustAmount <= 0">
                                 <Spinner v-if="processing" />
-                                {{ adjustOperation === 'credit' ? 'Xác nhận nạp' : 'Xác nhận trừ' }}
+                                {{ submitLabel }}
                             </Button>
                         </div>
                     </Form>
@@ -379,6 +437,12 @@ defineOptions({
     color: #9f1239;
 }
 
+.stat-commission {
+    background: #fdf4ff;
+    border-color: #f0abfc;
+    color: #86198f;
+}
+
 .stat-net {
     background: #f3f7fc;
     border-color: #dbe4ed;
@@ -395,6 +459,12 @@ defineOptions({
     background: rgba(244, 63, 94, 0.12);
     border-color: rgba(244, 63, 94, 0.35);
     color: #fda4af;
+}
+
+:global(.dark) .stat-commission {
+    background: rgba(217, 70, 239, 0.12);
+    border-color: rgba(217, 70, 239, 0.35);
+    color: #f0abfc;
 }
 
 :global(.dark) .stat-net {
@@ -457,6 +527,12 @@ defineOptions({
     color: #9f1239;
 }
 
+.op-chip--commission-active {
+    background: #fdf4ff;
+    border-color: #d946ef;
+    color: #86198f;
+}
+
 :global(.dark) .op-chip--credit-active {
     background: rgba(16, 185, 129, 0.15);
     border-color: #10b981;
@@ -467,6 +543,12 @@ defineOptions({
     background: rgba(244, 63, 94, 0.15);
     border-color: #f43f5e;
     color: #fda4af;
+}
+
+:global(.dark) .op-chip--commission-active {
+    background: rgba(217, 70, 239, 0.15);
+    border-color: #d946ef;
+    color: #f0abfc;
 }
 
 .quick-btn {
@@ -517,5 +599,14 @@ defineOptions({
 
 .submit-debit:hover:not(:disabled) {
     background: #be123c !important;
+}
+
+.submit-commission {
+    background: #d946ef !important;
+    color: #ffffff !important;
+}
+
+.submit-commission:hover:not(:disabled) {
+    background: #a21caf !important;
 }
 </style>

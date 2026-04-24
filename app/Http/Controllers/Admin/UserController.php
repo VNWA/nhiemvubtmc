@@ -176,6 +176,12 @@ class UserController extends Controller
             ->get()
             ->keyBy('direction');
 
+        $commission = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->where('source', WalletSource::Commission->value)
+            ->selectRaw('COALESCE(SUM(amount_vnd), 0) as sum_amount, COUNT(*) as total')
+            ->first();
+
         return Inertia::render('admin/users/Deposit', [
             'user' => [
                 'id' => $user->id,
@@ -191,6 +197,8 @@ class UserController extends Controller
                 'credit_count' => (int) ($totals[WalletDirection::Credit->value]->total ?? 0),
                 'debit_total' => (int) ($totals[WalletDirection::Debit->value]->sum_amount ?? 0),
                 'debit_count' => (int) ($totals[WalletDirection::Debit->value]->total ?? 0),
+                'commission_total' => (int) ($commission->sum_amount ?? 0),
+                'commission_count' => (int) ($commission->total ?? 0),
             ],
         ]);
     }
@@ -198,28 +206,32 @@ class UserController extends Controller
     public function adjustBalance(AdjustUserBalanceRequest $request, User $user): RedirectResponse
     {
         $data = $request->validated();
-        $isCredit = $data['operation'] === 'credit';
+        $operation = $data['operation'];
         $amount = (int) $data['amount_vnd'];
         $note = $data['note'] ?? null;
         $adminId = (int) ($request->user()?->getKey() ?? 0);
 
-        DB::transaction(function () use ($user, $amount, $isCredit, $note, $adminId) {
+        [$direction, $source, $defaultNote, $verb] = match ($operation) {
+            'credit' => [WalletDirection::Credit, WalletSource::AdminCredit, 'Nạp tiền thành công', 'Đã nạp'],
+            'debit' => [WalletDirection::Debit, WalletSource::AdminDebit, 'Rút tiền thành công', 'Đã trừ'],
+            'commission' => [WalletDirection::Credit, WalletSource::Commission, 'Thưởng hoa hồng', 'Đã thưởng hoa hồng'],
+        };
+
+        DB::transaction(function () use ($user, $amount, $direction, $source, $note, $defaultNote, $adminId) {
             /** @var User $locked */
             $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
 
             $this->wallet->apply(
                 $locked,
-                $isCredit ? WalletDirection::Credit : WalletDirection::Debit,
-                $isCredit ? WalletSource::AdminCredit : WalletSource::AdminDebit,
+                $direction,
+                $source,
                 $amount,
-                $note ?: ($isCredit ? 'Admin nạp số dư' : 'Admin trừ số dư'),
+                $note ?: $defaultNote,
                 ['admin_id' => $adminId],
             );
         });
 
-        $message = $isCredit
-            ? sprintf('Đã nạp %s VNĐ vào số dư.', number_format($amount, 0, ',', '.'))
-            : sprintf('Đã trừ %s VNĐ khỏi số dư.', number_format($amount, 0, ',', '.'));
+        $message = sprintf('%s %s VNĐ.', $verb, number_format($amount, 0, ',', '.'));
 
         return back()->with('success', $message);
     }

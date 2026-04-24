@@ -93,6 +93,24 @@ defineOptions({
             </div>
 
             <div class="grid gap-2">
+                <Label for="viewer_offset">Số người xem bù</Label>
+                <Input
+                    id="viewer_offset"
+                    name="viewer_offset"
+                    type="number"
+                    min="0"
+                    max="999999"
+                    :default-value="0"
+                    class="max-w-[200px]"
+                />
+                <p class="text-xs text-muted-foreground">
+                    Giá trị này sẽ được cộng thêm vào số người xem hiển thị cho user (bù vào số
+                    realtime thực). VD: set 19 → user thấy "19 + số thật đang xem".
+                </p>
+                <InputError :message="errors.viewer_offset" />
+            </div>
+
+            <div class="grid gap-2">
                 <Label for="avatar">Ảnh đại diện (tuỳ chọn)</Label>
                 <div class="flex items-center gap-3">
                     <div class="flex size-16 items-center justify-center overflow-hidden rounded-full border bg-muted">

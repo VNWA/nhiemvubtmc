@@ -118,10 +118,13 @@ class AccountController extends Controller
 
         $base = WalletTransaction::query()->where('user_id', $user->getKey());
 
+        $commissionSource = WalletSource::Commission->value;
         $totals = (clone $base)
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
                 coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
+                coalesce(sum(case when source = '{$commissionSource}' then 1 else 0 end), 0) as commission_count,
                 count(*) as total_count
             ")
             ->first();
@@ -151,8 +154,9 @@ class AccountController extends Controller
         $last30DaysBase = (clone $base)->where('created_at', '>=', now()->subDays(30));
         $last30 = (clone $last30DaysBase)
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
                 coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
                 count(*) as total_count
             ")
             ->first();
@@ -162,11 +166,14 @@ class AccountController extends Controller
             'totals' => [
                 'totalCreditVnd' => (int) ($totals?->total_credit ?? 0),
                 'totalDebitVnd' => (int) ($totals?->total_debit ?? 0),
+                'totalCommissionVnd' => (int) ($totals?->total_commission ?? 0),
+                'commissionCount' => (int) ($totals?->commission_count ?? 0),
                 'totalCount' => (int) ($totals?->total_count ?? 0),
             ],
             'last30Days' => [
                 'totalCreditVnd' => (int) ($last30?->total_credit ?? 0),
                 'totalDebitVnd' => (int) ($last30?->total_debit ?? 0),
+                'totalCommissionVnd' => (int) ($last30?->total_commission ?? 0),
                 'totalCount' => (int) ($last30?->total_count ?? 0),
             ],
             'bySource' => $bySource,
@@ -243,8 +250,11 @@ class AccountController extends Controller
     private function applyFilter(Builder $query, string $filter): void
     {
         match ($filter) {
-            'credit' => $query->where('direction', WalletDirection::Credit->value),
+            'credit' => $query
+                ->where('direction', WalletDirection::Credit->value)
+                ->where('source', '<>', WalletSource::Commission->value),
             'debit' => $query->where('direction', WalletDirection::Debit->value),
+            'commission' => $query->where('source', WalletSource::Commission->value),
             default => null,
         };
     }
@@ -253,7 +263,7 @@ class AccountController extends Controller
     {
         $value = is_string($raw) ? $raw : 'all';
 
-        return in_array($value, ['all', 'credit', 'debit'], true) ? $value : 'all';
+        return in_array($value, ['all', 'credit', 'debit', 'commission'], true) ? $value : 'all';
     }
 
     /**

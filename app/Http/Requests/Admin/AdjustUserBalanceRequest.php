@@ -21,7 +21,7 @@ class AdjustUserBalanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'operation' => ['required', 'in:credit,debit'],
+            'operation' => ['required', 'in:credit,debit,commission'],
             'amount_vnd' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'note' => ['nullable', 'string', 'max:255'],
         ];

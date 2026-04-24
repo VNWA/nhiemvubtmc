@@ -1,5 +1,10 @@
 <script lang="ts" setup>
 import { Link } from '@inertiajs/vue3';
+import { Swiper, SwiperSlide } from 'swiper/vue';
+import { Autoplay, Pagination } from 'swiper/modules';
+
+import 'swiper/css';
+import 'swiper/css/pagination';
 
 type Shortcut = {
     label: string;
@@ -7,6 +12,11 @@ type Shortcut = {
     image: string;
     tone: 'primary' | 'gold' | 'sky';
 };
+
+const banners: string[] = [
+    '/images/banner/banner1.png',
+    '/images/banner/banner2.jpg',
+];
 
 const shortcuts: Shortcut[] = [
     {
@@ -33,8 +43,13 @@ const shortcuts: Shortcut[] = [
 <template>
     <div class="space-y-4 pb-24">
         <div class="overflow-hidden rounded-xl border border-stone-100 shadow-sm">
-            <img src="https://sjccantho.vn/public/upload/slide/BANNER%20KIM%20C%C6%AF%C6%A0NG.png" alt="Banner"
-                class="h-full w-full object-cover" />
+            <Swiper :modules="[Autoplay, Pagination]" :loop="banners.length > 1"
+                :autoplay="{ delay: 4000, disableOnInteraction: false }" :pagination="{ clickable: true }"
+                :slides-per-view="1" :space-between="0" class="home-banner-swiper">
+                <SwiperSlide v-for="(src, i) in banners" :key="i">
+                    <img :src="src" :alt="`Banner ${i + 1}`" class="h-[300px] w-full object-cover" />
+                </SwiperSlide>
+            </Swiper>
         </div>
 
         <div class="px-1">
@@ -54,6 +69,21 @@ const shortcuts: Shortcut[] = [
 </template>
 
 <style scoped>
+.home-banner-swiper {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+}
+
+.home-banner-swiper :deep(.swiper-pagination-bullet) {
+    background: #ffffff;
+    opacity: 0.55;
+}
+
+.home-banner-swiper :deep(.swiper-pagination-bullet-active) {
+    background: var(--primary-2, #e8a500);
+    opacity: 1;
+}
+
 .shortcut-icon {
     display: inline-flex;
     height: 4rem;

@@ -46,7 +46,14 @@ type RoundHistory = {
 };
 
 const props = defineProps<{
-    eventRoom: { id: number; name: string; slug: string; avatar_url: string | null; is_active: boolean };
+    eventRoom: {
+        id: number;
+        name: string;
+        slug: string;
+        avatar_url: string | null;
+        is_active: boolean;
+        viewer_offset: number;
+    };
     options: Opt[];
     openRound: OpenRoundT | null;
     betsStats: { betsCount: number; totalAmountVnd: number; perOption: SukienOptionStat[] };
@@ -120,6 +127,10 @@ const timerColorClass = computed(() => {
     }
     return 'bg-emerald-100 text-emerald-800';
 });
+
+const displayedPresenceCount = computed(
+    () => presenceCount.value + (props.eventRoom.viewer_offset ?? 0),
+);
 
 const ratios = computed(() => {
     const total = liveTotalVnd.value;
@@ -360,10 +371,19 @@ function submitEnd() {
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div class="rounded-xl border bg-card p-3">
-                <p class="text-xs text-muted-foreground">Người đang xem (realtime)</p>
+                <p class="text-xs text-muted-foreground">Người đang xem (hiển thị)</p>
                 <p class="mt-1 flex items-center gap-1 text-2xl font-bold">
                     <Users class="size-5 text-amber-700" />
-                    {{ presenceCount }}
+                    {{ displayedPresenceCount }}
+                </p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    Thật <span class="font-semibold text-foreground">{{ presenceCount }}</span>
+                    <span v-if="eventRoom.viewer_offset > 0">
+                        + bù
+                        <span class="font-semibold text-amber-700">
+                            {{ eventRoom.viewer_offset }}
+                        </span>
+                    </span>
                 </p>
                 <p
                     v-if="presenceNames.length"
@@ -373,7 +393,6 @@ function submitEnd() {
                     {{ presenceNames.slice(0, 6).join(' · ') }}
                     <span v-if="presenceNames.length > 6"> +{{ presenceNames.length - 6 }}…</span>
                 </p>
-                <p v-else class="mt-1 text-xs text-muted-foreground">Chưa có ai trong phòng.</p>
             </div>
             <div class="rounded-xl border bg-card p-3">
                 <p class="text-xs text-muted-foreground">Tổng lượt đặt kỳ này</p>

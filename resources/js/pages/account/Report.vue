@@ -3,10 +3,16 @@ import AccountController from '@/actions/App/Http/Controllers/Client/AccountCont
 import AccountPageHeader from '@/components/AccountPageHeader.vue';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowDownCircle, ArrowUpCircle, CalendarRange, History, PieChart, Wallet } from 'lucide-vue-next';
+import { ArrowDownCircle, ArrowUpCircle, CalendarRange, Gift, History, PieChart, Wallet } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-type Summary = { totalCreditVnd: number; totalDebitVnd: number; totalCount: number };
+type Summary = {
+    totalCreditVnd: number;
+    totalDebitVnd: number;
+    totalCommissionVnd: number;
+    totalCount: number;
+    commissionCount?: number;
+};
 type SourceRow = {
     source: string;
     source_label: string;
@@ -22,8 +28,18 @@ const props = defineProps<{
     bySource: SourceRow[];
 }>();
 
-const netLifetime = computed(() => props.totals.totalCreditVnd - props.totals.totalDebitVnd);
-const net30 = computed(() => props.last30Days.totalCreditVnd - props.last30Days.totalDebitVnd);
+const netLifetime = computed(
+    () =>
+        props.totals.totalCreditVnd +
+        props.totals.totalCommissionVnd -
+        props.totals.totalDebitVnd,
+);
+const net30 = computed(
+    () =>
+        props.last30Days.totalCreditVnd +
+        props.last30Days.totalCommissionVnd -
+        props.last30Days.totalDebitVnd,
+);
 
 
 
@@ -52,19 +68,26 @@ function percent(part: number, whole: number): string {
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
                 <PieChart class="size-4" /> Toàn thời gian
             </div>
-            <div class="mt-2 grid grid-cols-2 gap-2">
+            <div class="mt-2 grid grid-cols-3 gap-2">
                 <div class="rounded-xl bg-emerald-50 p-2.5">
                     <p class="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                         <ArrowUpCircle class="size-3.5" /> Tổng nạp
                     </p>
-                    <p class="mt-0.5 font-mono text-base font-bold text-emerald-800">+{{
+                    <p class="mt-0.5 font-mono text-sm font-bold text-emerald-800">+{{
                         formatVnd(totals.totalCreditVnd) }}</p>
+                </div>
+                <div class="rounded-xl bg-fuchsia-50 p-2.5">
+                    <p class="flex items-center gap-1 text-[11px] font-semibold text-fuchsia-700">
+                        <Gift class="size-3.5" /> Hoa hồng
+                    </p>
+                    <p class="mt-0.5 font-mono text-sm font-bold text-fuchsia-800">+{{
+                        formatVnd(totals.totalCommissionVnd) }}</p>
                 </div>
                 <div class="rounded-xl bg-rose-50 p-2.5">
                     <p class="flex items-center gap-1 text-[11px] font-semibold text-rose-700">
                         <ArrowDownCircle class="size-3.5" /> Tổng rút
                     </p>
-                    <p class="mt-0.5 font-mono text-base font-bold text-rose-800">-{{ formatVnd(totals.totalDebitVnd) }}
+                    <p class="mt-0.5 font-mono text-sm font-bold text-rose-800">-{{ formatVnd(totals.totalDebitVnd) }}
                     </p>
                 </div>
             </div>
@@ -82,11 +105,16 @@ function percent(part: number, whole: number): string {
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
                 <CalendarRange class="size-4" /> 30 ngày gần nhất
             </div>
-            <div class="mt-2 grid grid-cols-3 gap-2 text-center">
+            <div class="mt-2 grid grid-cols-4 gap-2 text-center">
                 <div class="rounded-xl bg-emerald-50 p-2">
                     <p class="text-[10px] font-semibold uppercase text-emerald-700">Nạp</p>
                     <p class="mt-0.5 font-mono text-xs font-bold text-emerald-800">+{{
                         formatVnd(last30Days.totalCreditVnd) }}</p>
+                </div>
+                <div class="rounded-xl bg-fuchsia-50 p-2">
+                    <p class="text-[10px] font-semibold uppercase text-fuchsia-700">Hoa hồng</p>
+                    <p class="mt-0.5 font-mono text-xs font-bold text-fuchsia-800">+{{
+                        formatVnd(last30Days.totalCommissionVnd) }}</p>
                 </div>
                 <div class="rounded-xl bg-rose-50 p-2">
                     <p class="text-[10px] font-semibold uppercase text-rose-700">Rút</p>

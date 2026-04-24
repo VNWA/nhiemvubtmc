@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\EventRoundService;
 use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -67,6 +68,7 @@ class EventRoomController extends Controller
             'slug' => $slug,
             'avatar_path' => $avatarPath,
             'is_active' => (string) $request->input('is_active', '1') === '1',
+            'viewer_offset' => max(0, (int) ($data['viewer_offset'] ?? 0)),
         ]);
 
         foreach (array_values($data['options']) as $order => $opt) {
@@ -93,6 +95,7 @@ class EventRoomController extends Controller
                 'slug' => $eventRoom->slug,
                 'avatar_url' => $eventRoom->avatar_url,
                 'is_active' => $eventRoom->is_active,
+                'viewer_offset' => (int) $eventRoom->viewer_offset,
             ],
         ]);
     }
@@ -156,6 +159,7 @@ class EventRoomController extends Controller
                 'slug' => $eventRoom->slug,
                 'avatar_url' => $eventRoom->avatar_url,
                 'is_active' => $eventRoom->is_active,
+                'viewer_offset' => (int) $eventRoom->viewer_offset,
             ],
             'options' => $eventRoom->options->map(fn (EventRoomOption $o) => [
                 'id' => (int) $o->getKey(),
@@ -199,6 +203,7 @@ class EventRoomController extends Controller
         $attributes = [
             'name' => $data['name'],
             'is_active' => (string) $request->input('is_active', '0') === '1',
+            'viewer_offset' => max(0, (int) ($data['viewer_offset'] ?? 0)),
         ];
 
         if ($request->hasFile('avatar')) {
@@ -223,7 +228,7 @@ class EventRoomController extends Controller
         DB::transaction(function () use ($eventRoom) {
             $roomId = $eventRoom->getKey();
 
-            /** @var \Illuminate\Support\Collection<int, EventRound> $openRounds */
+            /** @var Collection<int, EventRound> $openRounds */
             $openRounds = EventRound::query()
                 ->where('event_room_id', $roomId)
                 ->where('status', EventRoundStatus::Open)
@@ -231,7 +236,7 @@ class EventRoomController extends Controller
                 ->get();
 
             foreach ($openRounds as $round) {
-                /** @var \Illuminate\Support\Collection<int, EventBet> $bets */
+                /** @var Collection<int, EventBet> $bets */
                 $bets = EventBet::query()
                     ->where('event_round_id', $round->getKey())
                     ->with('option')

@@ -9,7 +9,14 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps<{
-    room: { id: number; name: string; slug: string; avatar_url: string | null; is_active: boolean };
+    room: {
+        id: number;
+        name: string;
+        slug: string;
+        avatar_url: string | null;
+        is_active: boolean;
+        viewer_offset: number;
+    };
 }>();
 
 const isActive = ref(props.room.is_active);
@@ -62,6 +69,24 @@ defineOptions({
                 <Label for="name">Tên phòng</Label>
                 <Input id="name" name="name" :default-value="room.name" required />
                 <InputError :message="errors.name" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="viewer_offset">Số người xem bù</Label>
+                <Input
+                    id="viewer_offset"
+                    name="viewer_offset"
+                    type="number"
+                    min="0"
+                    max="999999"
+                    :default-value="room.viewer_offset ?? 0"
+                    class="max-w-[200px]"
+                />
+                <p class="text-xs text-muted-foreground">
+                    Giá trị này được cộng thêm vào số người xem hiển thị cho user (bù vào số
+                    realtime thực).
+                </p>
+                <InputError :message="errors.viewer_offset" />
             </div>
 
             <div class="grid gap-1 text-sm text-muted-foreground">

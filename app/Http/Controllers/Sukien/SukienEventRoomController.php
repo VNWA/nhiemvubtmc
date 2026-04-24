@@ -110,6 +110,7 @@ class SukienEventRoomController extends Controller
                 'slug' => $room->slug,
                 'avatar_url' => $room->avatar_url,
                 'is_active' => $room->is_active,
+                'viewer_offset' => (int) $room->viewer_offset,
             ],
             'options' => $options,
             'openRound' => $openRound === null ? null : [
