@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -28,6 +29,16 @@ class User extends Authenticatable
     public function creator(): BelongsTo
     {
         return $this->belongsTo(self::class, 'created_by');
+    }
+
+    /**
+     * Bets placed by the user across events / rounds.
+     *
+     * @return HasMany<EventBet, $this>
+     */
+    public function eventBets(): HasMany
+    {
+        return $this->hasMany(EventBet::class, 'user_id');
     }
 
     /**

@@ -31,7 +31,7 @@ class UpdateUserRequest extends FormRequest
             'name' => $this->nameRules(),
             'username' => $this->usernameRules($editing->id),
             'password' => ['nullable', 'string', 'min:1', 'confirmed'],
-            'role' => ['required', 'in:admin,user'],
+            'role' => ['required', 'in:admin,staff,user'],
         ];
     }
 

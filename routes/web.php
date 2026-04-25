@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AppearanceController;
 use App\Http\Controllers\Admin\EventRoomController;
 use App\Http\Controllers\Admin\EventRoundController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserEventController;
 use App\Http\Controllers\Admin\WithdrawalController as AdminWithdrawalController;
 use App\Http\Controllers\Client\AboutController;
 use App\Http\Controllers\Client\AccountController;
@@ -38,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('bao-cao', 'report')->name('report');
         Route::get('vi', 'wallet')->name('wallet');
         Route::get('vi/data', 'walletData')->name('wallet.data');
+        Route::get('su-kien', 'events')->name('events');
     });
 
     Route::prefix('sukien')->name('sukien.')->group(function () {
@@ -49,7 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified', 'role:admin'])
+Route::middleware(['auth', 'verified', 'role:admin|staff'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
@@ -57,38 +59,49 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             return Inertia::render('admin/Dashboard');
         })->name('dashboard');
         Route::redirect('/', '/admin/users')->name('home');
-        Route::prefix('appearance')->name('appearance.')->controller(AppearanceController::class)->group(function () {
-            Route::get('{name}', 'view')->name('view');
-            Route::get('{key}/load', 'load')->name('load');
-            Route::post('{key}', 'update')->name('update');
-        });
-        Route::prefix('users')->name('users.')->controller(UserController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::get('create', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
-            Route::get('{user}/edit', 'edit')->name('edit');
-            Route::get('{user}/deposit', 'deposit')->name('deposit');
-            Route::match(['put', 'patch'], '{user}', 'update')->name('update');
-            Route::post('{user}/balance', 'adjustBalance')->name('balance.adjust');
-            Route::delete('{user}', 'destroy')->name('destroy');
+
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::controller(UserController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('{user}/edit', 'edit')->name('edit');
+                Route::get('{user}/deposit', 'deposit')->name('deposit');
+                Route::match(['put', 'patch'], '{user}', 'update')->name('update');
+                Route::post('{user}/balance', 'adjustBalance')->name('balance.adjust');
+                Route::delete('{user}', 'destroy')->name('destroy');
+            });
+
+            Route::controller(UserEventController::class)->group(function () {
+                Route::get('{user}/events', 'index')->name('events.index');
+                Route::patch('{user}/events/{bet}', 'update')->name('events.update');
+            });
         });
 
-        Route::prefix('withdrawals')->name('withdrawals.')->controller(AdminWithdrawalController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::post('{withdrawal}/approve', 'approve')->name('approve');
-            Route::post('{withdrawal}/reject', 'reject')->name('reject');
-        });
+        Route::middleware('role:admin')->group(function () {
+            Route::prefix('appearance')->name('appearance.')->controller(AppearanceController::class)->group(function () {
+                Route::get('{name}', 'view')->name('view');
+                Route::get('{key}/load', 'load')->name('load');
+                Route::post('{key}', 'update')->name('update');
+            });
 
-        Route::prefix('sukien-rooms')->name('sukien-rooms.')->group(function () {
-            Route::get('/', [EventRoomController::class, 'index'])->name('index');
-            Route::get('create', [EventRoomController::class, 'create'])->name('create');
-            Route::post('/', [EventRoomController::class, 'store'])->name('store');
-            Route::get('{event_room}/edit', [EventRoomController::class, 'edit'])->name('edit');
-            Route::get('{event_room}/manage', [EventRoomController::class, 'manage'])->name('manage');
-            Route::match(['put', 'patch'], '{event_room}', [EventRoomController::class, 'update'])->name('update');
-            Route::delete('{event_room}', [EventRoomController::class, 'destroy'])->name('destroy');
-            Route::post('{event_room}/rounds/start', [EventRoundController::class, 'start'])->name('rounds.start');
-            Route::post('{event_room}/rounds/{round}/end', [EventRoundController::class, 'end'])->name('rounds.end');
+            Route::prefix('withdrawals')->name('withdrawals.')->controller(AdminWithdrawalController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('{withdrawal}/approve', 'approve')->name('approve');
+                Route::post('{withdrawal}/reject', 'reject')->name('reject');
+            });
+
+            Route::prefix('sukien-rooms')->name('sukien-rooms.')->group(function () {
+                Route::get('/', [EventRoomController::class, 'index'])->name('index');
+                Route::get('create', [EventRoomController::class, 'create'])->name('create');
+                Route::post('/', [EventRoomController::class, 'store'])->name('store');
+                Route::get('{event_room}/edit', [EventRoomController::class, 'edit'])->name('edit');
+                Route::get('{event_room}/manage', [EventRoomController::class, 'manage'])->name('manage');
+                Route::match(['put', 'patch'], '{event_room}', [EventRoomController::class, 'update'])->name('update');
+                Route::delete('{event_room}', [EventRoomController::class, 'destroy'])->name('destroy');
+                Route::post('{event_room}/rounds/start', [EventRoundController::class, 'start'])->name('rounds.start');
+                Route::post('{event_room}/rounds/{round}/end', [EventRoundController::class, 'end'])->name('rounds.end');
+            });
         });
     });
 

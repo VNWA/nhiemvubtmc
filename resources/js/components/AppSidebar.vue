@@ -31,19 +31,29 @@ const mainNavItems = computed((): NavItem[] => {
             href: dashboard(),
             icon: LayoutGrid,
         },
-        {
+    ];
+
+    const auth = page.props.auth;
+    const isAdmin = auth?.isAdmin ?? false;
+    const canManage = auth?.canManageUsers ?? false;
+
+    if (isAdmin) {
+        items.push({
             title: 'Giới thiệu',
             href: appearance.view('About'),
             icon: Palette,
-        },
-    ];
+        });
+    }
 
-    if (page.props.auth?.canManageUsers) {
+    if (canManage) {
         items.push({
             title: 'Users',
             href: UserController.index.url(),
             icon: Users,
         });
+    }
+
+    if (isAdmin) {
         items.push({
             title: 'Sự kiện (phòng)',
             href: EventRoomController.index.url(),

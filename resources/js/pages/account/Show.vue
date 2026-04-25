@@ -15,6 +15,7 @@ import {
     User2,
     Wallet,
     type LucideIcon,
+    CalendarHeart,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
 
@@ -44,6 +45,7 @@ const props = defineProps<{
         bank_account_name: string | null;
     };
     totals: { totalCreditVnd: number; totalDebitVnd: number; totalCount: number };
+    eventCount?: number;
 }>();
 
 const bankConnected = computed(
@@ -58,6 +60,14 @@ const maskedAccount = computed(() => {
 });
 
 const menuItems = computed<MenuItem[]>(() => [
+    {
+        href: AccountController.events.url(),
+        icon: CalendarHeart,
+        iconBg: 'bg-blue-100',
+        iconColor: 'text-blue-700',
+        title: 'Sự kiện đã tham gia',
+        description: `${props.eventCount ?? 0} phiên đã ghi nhận`,
+    },
     {
         href: AccountController.report.url(),
         icon: BarChart3,

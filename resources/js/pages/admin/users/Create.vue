@@ -21,7 +21,22 @@ const props = defineProps<{
     roleOptions: string[];
 }>();
 
-const selectedRole = ref<string>(props.roleOptions[0] ?? '');
+const selectedRole = ref<string>(
+    props.roleOptions.includes('user') ? 'user' : props.roleOptions[0] ?? '',
+);
+
+function roleLabel(role: string): string {
+    switch (role) {
+        case 'admin':
+            return 'Admin';
+        case 'staff':
+            return 'Nhân viên';
+        case 'user':
+            return 'Khách hàng';
+        default:
+            return role;
+    }
+}
 
 defineOptions({
     layout: {
@@ -76,7 +91,7 @@ defineOptions({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem v-for="r in props.roleOptions" :key="r" :value="r">
-                            {{ r }}
+                            {{ roleLabel(r) }}
                         </SelectItem>
                     </SelectContent>
                 </Select>

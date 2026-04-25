@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EventBetStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,7 +16,23 @@ class EventBet extends Model
         'event_round_id',
         'option_id',
         'amount_vnd',
+        'status',
+        'refund_vnd',
+        'commission_vnd',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'status' => EventBetStatus::class,
+            'amount_vnd' => 'integer',
+            'refund_vnd' => 'integer',
+            'commission_vnd' => 'integer',
+        ];
+    }
 
     /**
      * @return BelongsTo<User, $this>

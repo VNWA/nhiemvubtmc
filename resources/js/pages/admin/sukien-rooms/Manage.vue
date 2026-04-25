@@ -310,48 +310,33 @@ function submitEnd() {
 </script>
 
 <template>
+
     <Head :title="`Quản lí: ${eventRoom.name}`" />
 
     <div class="flex flex-col gap-4 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div class="flex items-center gap-3">
                 <div
-                    class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted"
-                >
-                    <img
-                        v-if="eventRoom.avatar_url"
-                        :src="eventRoom.avatar_url"
-                        :alt="eventRoom.name"
-                        class="size-full object-cover"
-                    />
+                    class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                    <img v-if="eventRoom.avatar_url" :src="eventRoom.avatar_url" :alt="eventRoom.name"
+                        class="size-full object-cover" />
                     <span v-else class="text-xs text-muted-foreground">N/A</span>
                 </div>
-                <Heading
-                    :title="eventRoom.name"
-                    :description="`/${eventRoom.slug} · ${options.length} mặt cược`"
-                />
-                <span
-                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                    :class="
-                        eventRoom.is_active
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-stone-200 text-stone-600'
-                    "
-                >
+                <Heading :title="eventRoom.name" :description="`/${eventRoom.slug} · ${options.length} mặt cược`" />
+                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" :class="eventRoom.is_active
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-stone-200 text-stone-600'
+                    ">
                     <Power v-if="eventRoom.is_active" class="size-3" />
                     <PowerOff v-else class="size-3" />
                     {{ eventRoom.is_active ? 'Đang bật' : 'Đang tắt' }}
                 </span>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <span
-                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                    :class="
-                        rtConnected
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-stone-200 text-stone-600'
-                    "
-                >
+                <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" :class="rtConnected
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-stone-200 text-stone-600'
+                    ">
                     <Wifi v-if="rtConnected" class="size-3.5" />
                     <WifiOff v-else class="size-3.5" />
                     {{ rtConnected ? 'Realtime' : 'Realtime tắt' }}
@@ -385,11 +370,8 @@ function submitEnd() {
                         </span>
                     </span>
                 </p>
-                <p
-                    v-if="presenceNames.length"
-                    class="mt-1 truncate text-xs text-muted-foreground"
-                    :title="presenceNames.join(' · ')"
-                >
+                <p v-if="presenceNames.length" class="mt-1 truncate text-xs text-muted-foreground"
+                    :title="presenceNames.join(' · ')">
                     {{ presenceNames.slice(0, 6).join(' · ') }}
                     <span v-if="presenceNames.length > 6"> +{{ presenceNames.length - 6 }}…</span>
                 </p>
@@ -406,10 +388,7 @@ function submitEnd() {
             </div>
         </div>
 
-        <section
-            v-if="liveOpenRound"
-            class="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-4 shadow-sm"
-        >
+        <section v-if="liveOpenRound" class="rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-4 shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
@@ -422,32 +401,25 @@ function submitEnd() {
                         </span>
                     </p>
                 </div>
-                <div
-                    v-if="remainingLabel !== null"
+                <div v-if="remainingLabel !== null"
                     class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
-                    :class="timerColorClass"
-                >
+                    :class="timerColorClass">
                     <Timer class="size-4" />
                     <span class="font-mono">{{ remainingLabel }}</span>
                     <span class="text-xs font-normal opacity-80">còn lại</span>
                 </div>
-                <div
-                    v-else
-                    class="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600"
-                >
+                <div v-else
+                    class="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
                     <Timer class="size-4" /> Không giới hạn
                 </div>
             </div>
 
             <div v-if="liveOpenRound.preset" class="mt-3 flex items-center gap-2 text-sm">
                 <span class="text-stone-700">Kết quả định sẵn:</span>
-                <span
-                    class="inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold shadow"
-                    :style="{
-                        backgroundColor: liveOpenRound.preset.bg_color,
-                        color: liveOpenRound.preset.text_color,
-                    }"
-                >
+                <span class="inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold shadow" :style="{
+                    backgroundColor: liveOpenRound.preset.bg_color,
+                    color: liveOpenRound.preset.text_color,
+                }">
                     {{ liveOpenRound.preset.label }}
                 </span>
             </div>
@@ -459,10 +431,8 @@ function submitEnd() {
                 <ul class="space-y-2">
                     <li v-for="r in ratios" :key="r.id">
                         <div class="mb-1 flex items-center justify-between text-xs">
-                            <span
-                                class="inline-flex items-center rounded px-2 py-0.5 font-semibold"
-                                :style="{ backgroundColor: r.bg_color, color: r.text_color }"
-                            >
+                            <span class="inline-flex items-center rounded px-2 py-0.5 font-semibold"
+                                :style="{ backgroundColor: r.bg_color, color: r.text_color }">
                                 {{ r.label }}
                             </span>
                             <span class="font-mono text-stone-700">
@@ -471,13 +441,10 @@ function submitEnd() {
                             </span>
                         </div>
                         <div class="h-2 w-full overflow-hidden rounded-full bg-stone-200">
-                            <div
-                                class="h-full rounded-full transition-all duration-500"
-                                :style="{
-                                    width: r.percent + '%',
-                                    backgroundColor: r.bg_color,
-                                }"
-                            />
+                            <div class="h-full rounded-full transition-all duration-500" :style="{
+                                width: r.percent + '%',
+                                backgroundColor: r.bg_color,
+                            }" />
                         </div>
                     </li>
                 </ul>
@@ -486,11 +453,8 @@ function submitEnd() {
                 </p>
             </div>
 
-            <Button
-                class="mt-4 w-full bg-stone-800 text-white hover:bg-stone-900"
-                :disabled="endForm.processing"
-                @click="submitEnd"
-            >
+            <Button class="mt-4 w-full bg-stone-800 text-white hover:bg-stone-900" :disabled="endForm.processing"
+                @click="submitEnd">
                 {{ endForm.processing ? 'Đang gửi…' : 'Kết thúc kỳ này ngay' }}
             </Button>
         </section>
@@ -509,78 +473,45 @@ function submitEnd() {
                             <SelectValue placeholder="Chọn kết quả định sẵn" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem
-                                v-for="o in options"
-                                :key="o.id"
-                                :value="String(o.id)"
-                            >
-                                <span
-                                    class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold"
-                                    :style="{ backgroundColor: o.bg_color, color: o.text_color }"
-                                >
+                            <SelectItem v-for="o in options" :key="o.id" :value="String(o.id)">
+                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold"
+                                    :style="{ backgroundColor: o.bg_color, color: o.text_color }">
                                     {{ o.label }}
                                 </span>
                             </SelectItem>
                         </SelectContent>
                     </Select>
-                    <p
-                        v-if="startForm.errors.preset_option_id"
-                        class="mt-1 text-xs text-red-600"
-                    >
+                    <p v-if="startForm.errors.preset_option_id" class="mt-1 text-xs text-red-600">
                         {{ startForm.errors.preset_option_id }}
                     </p>
                 </div>
 
                 <div>
                     <Label for="kname">Tên kỳ (tuỳ chọn)</Label>
-                    <Input
-                        id="kname"
-                        v-model="startForm.name"
-                        class="mt-1"
-                        placeholder="VD: Vòng 1 tối nay"
-                    />
+                    <Input id="kname" v-model="startForm.name" class="mt-1" placeholder="VD: Vòng 1 tối nay" />
                 </div>
             </div>
 
             <div class="mt-3">
                 <Label for="duration">Thời lượng (phút) — {{ minMinutes }}–{{ maxMinutes }}</Label>
-                <Input
-                    id="duration"
-                    v-model.number="startForm.duration_minutes"
-                    type="number"
-                    :min="minMinutes"
-                    :max="maxMinutes"
-                    class="mt-1 max-w-[180px]"
-                />
-                <div class="mt-2 flex flex-wrap gap-1.5">
-                    <button
-                        v-for="m in QUICK_MINUTES"
-                        :key="m"
-                        type="button"
-                        class="rounded-md border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs"
-                        :class="
-                            startForm.duration_minutes === m
-                                ? 'border-amber-500 bg-amber-50 text-amber-800'
-                                : ''
-                        "
-                        @click="setDurationMinutes(m)"
-                    >
+                <Input id="duration" v-model.number="startForm.duration_minutes" type="number" :min="minMinutes"
+                    :max="maxMinutes" class="mt-1 max-w-[180px]" />
+                <div class="mt-2 flex flex-wrap gap-1.5 ">
+                    <button v-for="m in QUICK_MINUTES" :key="m" type="button"
+                        class="rounded-md border border-stone-200  px-2 py-0.5 text-xs " :class="startForm.duration_minutes === m
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-stone-50 text-black'
+                            " @click="setDurationMinutes(m)">
                         {{ m }} phút
                     </button>
                 </div>
-                <p
-                    v-if="startForm.errors.duration_seconds"
-                    class="mt-1 text-xs text-red-600"
-                >
+                <p v-if="startForm.errors.duration_seconds" class="mt-1 text-xs text-red-600">
                     {{ startForm.errors.duration_seconds }}
                 </p>
             </div>
 
-            <Button
-                class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
-                :disabled="!startForm.preset_option_id || startForm.processing"
-                @click="submitStart"
-            >
+            <Button class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
+                :disabled="!startForm.preset_option_id || startForm.processing" @click="submitStart">
                 {{ startForm.processing ? 'Đang mở…' : 'Mở kỳ mới' }}
             </Button>
         </section>
@@ -588,21 +519,14 @@ function submitEnd() {
         <section class="rounded-2xl border bg-card p-3">
             <h3 class="mb-2 text-sm font-semibold text-stone-800">Các kỳ đã kết thúc gần đây</h3>
             <ul v-if="recentRounds.length" class="max-h-72 space-y-1 overflow-y-auto pr-1 text-sm">
-                <li
-                    v-for="h in recentRounds"
-                    :key="h.id"
-                    class="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5"
-                >
-                    <span class="text-stone-700"
-                        >Kỳ #{{ h.round_number }} <span class="text-xs text-stone-500">— {{ h.name }}</span></span
-                    >
-                    <span
-                        class="rounded px-1.5 py-0.5 text-xs font-medium"
-                        :style="{
-                            backgroundColor: h.preset.bg_color,
-                            color: h.preset.text_color,
-                        }"
-                    >
+                <li v-for="h in recentRounds" :key="h.id"
+                    class="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
+                    <span class="text-stone-700">Kỳ #{{ h.round_number }} <span class="text-xs text-stone-500">— {{
+                        h.name }}</span></span>
+                    <span class="rounded px-1.5 py-0.5 text-xs font-medium" :style="{
+                        backgroundColor: h.preset.bg_color,
+                        color: h.preset.text_color,
+                    }">
                         {{ h.preset.label }}
                     </span>
                 </li>

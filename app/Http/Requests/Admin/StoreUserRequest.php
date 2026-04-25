@@ -26,7 +26,7 @@ class StoreUserRequest extends FormRequest
             'name' => $this->nameRules(),
             'username' => $this->usernameRules(),
             'password' => $this->passwordRules(),
-            'role' => ['required', 'in:admin,user'],
+            'role' => ['required', 'in:admin,staff,user'],
         ];
     }
 

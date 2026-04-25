@@ -12,7 +12,10 @@ export type User = {
 
 export type Auth = {
     user: User | null;
+    isAdmin: boolean;
+    isStaff: boolean;
     canManageUsers: boolean;
+    role: 'admin' | 'staff' | 'user' | null;
     balanceVnd: number;
 };
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Coins, Pencil, Search, Trash2, UserPlus, X } from 'lucide-vue-next';
+import { CalendarHeart, Coins, Pencil, Search, Trash2, UserPlus, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
+import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
 import Heading from '@/components/Heading.vue';
 import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ type Row = {
     phone: string | null;
     balance_vnd: number;
     role: string;
+    event_count: number;
     created_at: string | null;
     creator: CreatorRef;
 };
@@ -75,6 +77,30 @@ function clearSearch() {
 
 function confirmDelete(name: string): boolean {
     return window.confirm(`Xóa người dùng "${name}"?\n\nHành động này không thể hoàn tác.`);
+}
+
+function roleLabel(role: string): string {
+    switch (role) {
+        case 'admin':
+            return 'Admin';
+        case 'staff':
+            return 'Nhân viên';
+        case 'user':
+            return 'Khách hàng';
+        default:
+            return role;
+    }
+}
+
+function roleClass(role: string): string {
+    switch (role) {
+        case 'admin':
+            return 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300';
+        case 'staff':
+            return 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300';
+        default:
+            return 'bg-secondary text-secondary-foreground';
+    }
 }
 
 function formatDate(iso: string | null): string {
@@ -154,7 +180,7 @@ defineOptions({
             class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border"
         >
             <div class="overflow-x-auto">
-                <table class="w-full min-w-4xl text-left text-sm">
+                <table class="w-full min-w-5xl text-left text-sm">
                     <thead
                         class="border-b border-border/60 bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground dark:border-sidebar-border"
                     >
@@ -162,16 +188,17 @@ defineOptions({
                             <th class="p-3 font-semibold">Người dùng</th>
                             <th class="p-3 font-semibold">Liên hệ</th>
                             <th class="p-3 text-end font-semibold">Số dư</th>
+                            <th class="p-3 text-center font-semibold">Sự kiện</th>
                             <th class="p-3 font-semibold">Vai trò</th>
                             <th class="p-3 font-semibold">Thời gian tạo</th>
-                            <th class="p-3 font-semibold">Người tạo</th>
+                            <th class="p-3 font-semibold">Nhân viên quản lý</th>
                             <th class="p-3 text-end font-semibold">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="users.data.length === 0">
                             <td
-                                colspan="7"
+                                colspan="8"
                                 class="px-3 py-10 text-center text-sm text-muted-foreground"
                             >
                                 Không có người dùng phù hợp.
@@ -213,11 +240,22 @@ defineOptions({
                                     </Link>
                                 </div>
                             </td>
+                            <td class="p-3 text-center">
+                                <Link
+                                    :href="UserEventController.index.url({ user: u.id })"
+                                    class="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                                    :title="`Xem ${u.event_count} sự kiện đã tham gia`"
+                                >
+                                    <CalendarHeart class="size-3" />
+                                    {{ u.event_count }}
+                                </Link>
+                            </td>
                             <td class="p-3">
                                 <span
-                                    class="inline-flex rounded-md bg-secondary px-2 py-0.5 text-xs capitalize text-secondary-foreground"
+                                    class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
+                                    :class="roleClass(u.role)"
                                 >
-                                    {{ u.role }}
+                                    {{ roleLabel(u.role) }}
                                 </span>
                             </td>
                             <td class="p-3 text-xs text-muted-foreground">

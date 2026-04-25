@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Enums\EventBetStatus;
 use App\Enums\WalletDirection;
 use App\Enums\WalletSource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\UpdateAccountRequest;
 use App\Http\Requests\Client\UpdateBankAccountRequest;
 use App\Http\Requests\Client\UpdatePasswordRequest;
+use App\Models\EventBet;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,6 +40,10 @@ class AccountController extends Controller
             ")
             ->first();
 
+        $eventCount = EventBet::query()
+            ->where('user_id', $user->getKey())
+            ->count();
+
         return Inertia::render('account/Show', [
             'profile' => $this->profilePayload($user),
             'balanceVnd' => (int) $user->balance_vnd,
@@ -47,6 +53,50 @@ class AccountController extends Controller
                 'totalDebitVnd' => (int) ($totals?->total_debit ?? 0),
                 'totalCount' => (int) ($totals?->total_count ?? 0),
             ],
+            'eventCount' => (int) $eventCount,
+        ]);
+    }
+
+    public function events(Request $request): Response
+    {
+        $user = $request->user();
+        abort_if($user === null, 403);
+
+        $bets = EventBet::query()
+            ->with([
+                'eventRound:id,event_room_id,round_number,name',
+                'eventRound.eventRoom:id,name,slug',
+                'option:id,label',
+            ])
+            ->where('user_id', $user->getKey())
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString()
+            ->through(function (EventBet $bet) {
+                $fee = (int) $bet->amount_vnd;
+                $refund = (int) ($bet->refund_vnd ?? 0);
+                $commission = (int) ($bet->commission_vnd ?? 0);
+                $status = $bet->status ?? EventBetStatus::Pending;
+
+                return [
+                    'id' => (int) $bet->getKey(),
+                    'amount_vnd' => $fee,
+                    'refund_vnd' => $refund,
+                    'commission_vnd' => $commission,
+                    'net_vnd' => $refund + $commission - $fee,
+                    'status' => $status->value,
+                    'status_label' => $status->label(),
+                    'created_at' => $bet->created_at?->toIso8601String(),
+                    'option_label' => $bet->option?->label,
+                    'round_name' => $bet->eventRound?->name,
+                    'round_number' => (int) ($bet->eventRound?->round_number ?? 0),
+                    'room_name' => $bet->eventRound?->eventRoom?->name,
+                ];
+            });
+
+        return Inertia::render('account/Events', [
+            'bets' => $bets,
+            'balanceVnd' => (int) $user->balance_vnd,
         ]);
     }
 

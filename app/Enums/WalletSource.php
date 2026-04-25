@@ -9,6 +9,7 @@ enum WalletSource: string
     case Commission = 'commission';
     case BetPlace = 'bet_place';
     case BetCancel = 'bet_cancel';
+    case EventRefund = 'event_refund';
     case Withdrawal = 'withdrawal';
 
     public function label(): string
@@ -19,6 +20,7 @@ enum WalletSource: string
             self::Commission => 'Thưởng hoa hồng',
             self::BetPlace => 'Đặt cược',
             self::BetCancel => 'Huỷ cược (hoàn tiền)',
+            self::EventRefund => 'Hoàn trả sự kiện',
             self::Withdrawal => 'Rút tiền đã duyệt',
         };
     }

@@ -27,16 +27,34 @@ class UserController extends Controller
     public function __construct(private WalletService $wallet) {}
 
     /**
+     * Roles the current viewer is allowed to assign.
+     *
      * @return list<string>
      */
-    private function roleOptions(): array
+    private function roleOptions(Request $request): array
     {
-        return ['admin', 'user'];
+        $viewer = $request->user();
+
+        if ($viewer?->hasRole('admin')) {
+            return ['admin', 'staff', 'user'];
+        }
+
+        return ['user'];
+    }
+
+    private function isStaffOnly(?User $viewer): bool
+    {
+        return $viewer !== null
+            && $viewer->hasRole('staff')
+            && ! $viewer->hasRole('admin');
     }
 
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', User::class);
+
+        $viewer = $request->user();
+        $isStaffOnly = $this->isStaffOnly($viewer);
 
         $search = trim((string) $request->query('q', ''));
         $perPage = (int) $request->integer('per_page', 15);
@@ -44,6 +62,13 @@ class UserController extends Controller
 
         $users = User::query()
             ->with(['roles', 'creator:id,name,username'])
+            ->withCount('eventBets')
+            ->when($isStaffOnly, function ($query) use ($viewer) {
+                $query->where('created_by', $viewer?->getKey())
+                    ->whereDoesntHave('roles', function ($q) {
+                        $q->whereIn('name', ['admin', 'staff']);
+                    });
+            })
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.$search.'%';
                 $query->where(function ($q) use ($like) {
@@ -67,6 +92,7 @@ class UserController extends Controller
                     'phone' => $user->phone,
                     'balance_vnd' => (int) $user->balance_vnd,
                     'role' => $role?->name ?? 'user',
+                    'event_count' => (int) ($user->event_bets_count ?? 0),
                     'created_at' => $user->created_at?->toIso8601String(),
                     'creator' => $user->creator === null ? null : [
                         'id' => (int) $user->creator->getKey(),
@@ -82,12 +108,12 @@ class UserController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $this->authorize('create', User::class);
 
         return Inertia::render('admin/users/Create', [
-            'roleOptions' => $this->roleOptions(),
+            'roleOptions' => $this->roleOptions($request),
         ]);
     }
 
@@ -96,6 +122,10 @@ class UserController extends Controller
         $data = $request->validated();
         $role = $data['role'];
         unset($data['role']);
+
+        if (! in_array($role, $this->roleOptions($request), true)) {
+            abort(403, 'Bạn không có quyền tạo tài khoản với vai trò này.');
+        }
 
         $data['email'] = $this->generateUniqueEmail($data['username']);
         $data['created_by'] = $request->user()?->getKey();
@@ -130,7 +160,7 @@ class UserController extends Controller
         return $email;
     }
 
-    public function edit(User $user): Response
+    public function edit(Request $request, User $user): Response
     {
         $this->authorize('update', $user);
 
@@ -143,7 +173,7 @@ class UserController extends Controller
                 'balance_vnd' => (int) $user->balance_vnd,
                 'role' => $user->roles->first()?->name ?? 'user',
             ],
-            'roleOptions' => $this->roleOptions(),
+            'roleOptions' => $this->roleOptions($request),
         ]);
     }
 
@@ -205,6 +235,8 @@ class UserController extends Controller
 
     public function adjustBalance(AdjustUserBalanceRequest $request, User $user): RedirectResponse
     {
+        $this->authorize('update', $user);
+
         $data = $request->validated();
         $operation = $data['operation'];
         $amount = (int) $data['amount_vnd'];
@@ -241,6 +273,10 @@ class UserController extends Controller
         $data = $request->validated();
         $role = $data['role'];
         unset($data['role']);
+
+        if (! in_array($role, $this->roleOptions($request), true)) {
+            abort(403, 'Bạn không có quyền gán vai trò này.');
+        }
 
         if (empty($data['password'] ?? '')) {
             $data = Arr::except($data, ['password']);

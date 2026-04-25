@@ -103,15 +103,14 @@ function statusChipClass(s: string): string {
 </script>
 
 <template>
+
     <Head title="Rút tiền" />
 
     <div class="space-y-4 px-3 pb-24 pt-3">
         <header class="flex items-center gap-2">
-            <Link
-                :href="'/'"
+            <Link :href="'/'"
                 class="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition active:scale-95 hover:bg-stone-200"
-                aria-label="Quay lại"
-            >
+                aria-label="Quay lại">
                 <ArrowLeft class="size-4" />
             </Link>
             <div class="min-w-0 flex-1">
@@ -140,76 +139,51 @@ function statusChipClass(s: string): string {
             </div>
         </section>
 
-        <section
-            v-if="!bankLinked"
-            class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
-        >
+        <section v-if="!bankLinked" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
             <p class="font-semibold">Bạn chưa liên kết tài khoản ngân hàng.</p>
             <p class="mt-1 text-xs">
                 Vui lòng cập nhật thông tin ngân hàng để gửi yêu cầu rút tiền.
             </p>
-            <Link
-                :href="AccountController.editBank.url()"
-                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-900 underline"
-            >
-                Liên kết ngân hàng <ChevronsRight class="size-3.5" />
+            <Link :href="AccountController.editBank.url()"
+                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-900 underline">
+                Liên kết ngân hàng
+                <ChevronsRight class="size-3.5" />
             </Link>
         </section>
 
-        <section
-            v-else
-            class="rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
-        >
+        <section v-else class="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
                 <Landmark class="size-3.5" /> Tài khoản nhận
             </div>
             <div class="mt-1.5 space-y-0.5 text-sm text-stone-800">
                 <p class="font-semibold">{{ bank.bank_name }}</p>
                 <p class="font-mono">{{ bank.bank_account_number }}</p>
-                <p class="text-xs text-stone-500">Chủ TK: <span class="font-semibold text-stone-700">{{ bank.bank_account_name }}</span></p>
+                <p class="text-xs text-stone-500">Chủ TK: <span class="font-semibold text-stone-700">{{
+                    bank.bank_account_name }}</span></p>
             </div>
-            <Link
-                :href="AccountController.editBank.url()"
-                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-(--primary-1) underline"
-            >
-                Đổi tài khoản <ChevronsRight class="size-3.5" />
+            <Link :href="AccountController.editBank.url()"
+                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-(--primary-1) underline">
+                Đổi tài khoản
+                <ChevronsRight class="size-3.5" />
             </Link>
         </section>
 
-        <form
-            v-if="bankLinked"
-            class="space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
-            @submit.prevent="submit"
-        >
+        <form v-if="bankLinked" class="space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
+            @submit.prevent="submit">
             <div class="space-y-1.5">
                 <Label for="amount_vnd" class="text-sm font-semibold text-stone-700">
                     Số tiền muốn rút
                 </Label>
-                <CurrencyInput
-                    id="amount_vnd"
-                    v-model="form.amount_vnd"
-                    :max="availableVnd"
-                    :aria-invalid="!!form.errors.amount_vnd"
-                    placeholder="0"
-                />
+                <CurrencyInput id="amount_vnd" v-model="form.amount_vnd" :max="availableVnd"
+                    :aria-invalid="!!form.errors.amount_vnd" placeholder="0" />
                 <InputError :message="form.errors.amount_vnd" />
                 <div class="flex flex-wrap gap-1.5 pt-1">
-                    <button
-                        v-for="v in quickAmounts"
-                        :key="v"
-                        type="button"
-                        class="quick-btn"
-                        :disabled="v > availableVnd"
-                        @click="pickQuick(v)"
-                    >
+                    <button v-for="v in quickAmounts" :key="v" type="button" class="quick-btn"
+                        :disabled="v > availableVnd" @click="pickQuick(v)">
                         {{ formatVnd(v) }}
                     </button>
-                    <button
-                        type="button"
-                        class="quick-btn quick-btn--max"
-                        :disabled="availableVnd <= 0"
-                        @click="pickQuick(availableVnd)"
-                    >
+                    <button type="button" class="quick-btn quick-btn--max" :disabled="availableVnd <= 0"
+                        @click="pickQuick(availableVnd)">
                         Tối đa
                     </button>
                 </div>
@@ -219,33 +193,18 @@ function statusChipClass(s: string): string {
                 <Label for="note" class="text-sm font-semibold text-stone-700">
                     Ghi chú (không bắt buộc)
                 </Label>
-                <textarea
-                    id="note"
-                    v-model="form.note"
-                    rows="2"
-                    maxlength="500"
-                    placeholder="Ví dụ: Rút tiền thưởng…"
-                    class="withdraw-textarea"
-                    :aria-invalid="!!form.errors.note || undefined"
-                ></textarea>
+                <textarea id="note" v-model="form.note" rows="2" maxlength="500" placeholder="Ví dụ: Rút tiền thưởng…"
+                    class="withdraw-textarea" :aria-invalid="!!form.errors.note || undefined"></textarea>
                 <InputError :message="form.errors.note" />
             </div>
 
             <div class="flex items-center gap-2 pt-1">
-                <Button
-                    type="button"
-                    variant="outline"
-                    class="flex-1"
-                    :disabled="form.processing || form.amount_vnd === 0"
-                    @click="reset"
-                >
+                <Button type="button" variant="outline" class="flex-1"
+                    :disabled="form.processing || form.amount_vnd === 0" @click="reset">
                     Đặt lại
                 </Button>
-                <Button
-                    type="submit"
-                    class="flex-[1.4] btn-gold"
-                    :disabled="form.processing || form.amount_vnd === 0 || availableVnd <= 0"
-                >
+                <Button type="submit" class="flex-[1.4] btn-gold"
+                    :disabled="form.processing || form.amount_vnd === 0 || availableVnd <= 0">
                     <Send class="size-4" />
                     Gửi yêu cầu
                 </Button>
@@ -272,8 +231,7 @@ function statusChipClass(s: string): string {
                                 </span>
                                 <span
                                     class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
-                                    :class="statusChipClass(row.status)"
-                                >
+                                    :class="statusChipClass(row.status)">
                                     <component :is="statusIcon(row.status)" class="size-3" />
                                     {{ row.status_label }}
                                 </span>
@@ -285,15 +243,10 @@ function statusChipClass(s: string): string {
                                 Ghi chú: {{ row.note }}
                             </p>
                             <p v-if="row.admin_note" class="mt-1 rounded bg-stone-50 px-2 py-1 text-xs text-stone-700">
-                                <span class="font-semibold">Phản hồi:</span> {{ row.admin_note }}
+                                <span class="font-semibold">Lý do:</span> {{ row.admin_note }}
                             </p>
                         </div>
-                        <button
-                            v-if="row.can_cancel"
-                            type="button"
-                            class="cancel-btn"
-                            @click="cancel(row.id)"
-                        >
+                        <button v-if="row.can_cancel" type="button" class="cancel-btn" @click="cancel(row.id)">
                             Huỷ
                         </button>
                     </div>

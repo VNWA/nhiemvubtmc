@@ -33,6 +33,19 @@ const props = defineProps<{
 
 const selectedRole = ref<string>(props.user.role);
 
+function roleLabel(role: string): string {
+    switch (role) {
+        case 'admin':
+            return 'Admin';
+        case 'staff':
+            return 'Nhân viên';
+        case 'user':
+            return 'Khách hàng';
+        default:
+            return role;
+    }
+}
+
 defineOptions({
     layout: {
         breadcrumbs: [
@@ -123,7 +136,7 @@ defineOptions({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem v-for="r in roleOptions" :key="r" :value="r">
-                                {{ r }}
+                                {{ roleLabel(r) }}
                             </SelectItem>
                         </SelectContent>
                     </Select>

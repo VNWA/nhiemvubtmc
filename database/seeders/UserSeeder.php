@@ -28,6 +28,10 @@ class UserSeeder extends Seeder
             'name' => 'admin',
             'guard_name' => 'web',
         ]);
+        $staffRole = Role::create([
+            'name' => 'staff',
+            'guard_name' => 'web',
+        ]);
         $userRole = Role::create([
             'name' => 'user',
             'guard_name' => 'web',
@@ -40,11 +44,19 @@ class UserSeeder extends Seeder
         ]);
         $admin->assignRole($adminRole);
 
+        $staff = User::factory()->create([
+            'name' => 'Nhân viên mẫu',
+            'username' => 'staff',
+            'password' => Hash::make('staff'),
+        ]);
+        $staff->assignRole($staffRole);
+
         $regular = User::factory()->create([
             'name' => 'User',
             'username' => 'user',
             'password' => Hash::make('user'),
             'balance_vnd' => 1_000_000,
+            'created_by' => $staff->getKey(),
         ]);
         $regular->assignRole($userRole);
     }

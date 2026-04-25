@@ -40,7 +40,10 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
-                'canManageUsers' => $request->user()?->hasRole('admin') ?? false,
+                'isAdmin' => $request->user()?->hasRole('admin') ?? false,
+                'isStaff' => $request->user()?->hasRole('staff') ?? false,
+                'canManageUsers' => $request->user()?->hasAnyRole(['admin', 'staff']) ?? false,
+                'role' => $request->user()?->roles->first()?->name,
                 'balanceVnd' => (int) ($request->user()?->balance_vnd ?? 0),
             ],
             'flash' => [
