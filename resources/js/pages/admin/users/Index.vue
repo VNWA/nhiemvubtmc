@@ -127,15 +127,13 @@ defineOptions({
 </script>
 
 <template>
+
     <Head title="Quản lý người dùng" />
 
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <Heading
-                variant="small"
-                title="Người dùng"
-                description="Quản lý tài khoản, tìm kiếm theo tên / email / số điện thoại / tên đăng nhập."
-            />
+            <Heading variant="small" title="Người dùng"
+                description="Quản lý tài khoản, tìm kiếm theo tên / email / số điện thoại / tên đăng nhập." />
             <Button as-child>
                 <Link :href="UserController.create.url()">
                     <UserPlus class="size-4" />
@@ -147,22 +145,12 @@ defineOptions({
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="relative w-full sm:max-w-sm">
                 <Search
-                    class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                    v-model="search"
-                    type="search"
-                    placeholder="Tìm theo tên, tên đăng nhập, email, số điện thoại…"
-                    class="h-10 pl-9 pr-9"
-                    autocomplete="off"
-                />
-                <button
-                    v-if="search !== ''"
-                    type="button"
+                    class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input v-model="search" type="search" placeholder="Tìm theo tên, tên đăng nhập, email, số điện thoại…"
+                    class="h-10 pl-9 pr-9" autocomplete="off" />
+                <button v-if="search !== ''" type="button"
                     class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Xóa tìm kiếm"
-                    @click="clearSearch"
-                >
+                    aria-label="Xóa tìm kiếm" @click="clearSearch">
                     <X class="size-4" />
                 </button>
             </div>
@@ -176,39 +164,30 @@ defineOptions({
             </div>
         </div>
 
-        <div
-            class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border"
-        >
+        <div class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border">
             <div class="overflow-x-auto">
                 <table class="w-full min-w-5xl text-left text-sm">
                     <thead
-                        class="border-b border-border/60 bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground dark:border-sidebar-border"
-                    >
+                        class="border-b border-border/60 bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
                         <tr>
                             <th class="p-3 font-semibold">Người dùng</th>
                             <th class="p-3 font-semibold">Liên hệ</th>
                             <th class="p-3 text-end font-semibold">Số dư</th>
-                            <th class="p-3 text-center font-semibold">Sự kiện</th>
                             <th class="p-3 font-semibold">Vai trò</th>
                             <th class="p-3 font-semibold">Thời gian tạo</th>
                             <th class="p-3 font-semibold">Nhân viên quản lý</th>
+                            <th class="p-3 text-center font-semibold">Sự kiện</th>
                             <th class="p-3 text-end font-semibold">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="users.data.length === 0">
-                            <td
-                                colspan="8"
-                                class="px-3 py-10 text-center text-sm text-muted-foreground"
-                            >
+                            <td colspan="8" class="px-3 py-10 text-center text-sm text-muted-foreground">
                                 Không có người dùng phù hợp.
                             </td>
                         </tr>
-                        <tr
-                            v-for="u in users.data"
-                            :key="u.id"
-                            class="border-b border-border/40 transition hover:bg-muted/40 last:border-0 dark:border-sidebar-border/60"
-                        >
+                        <tr v-for="u in users.data" :key="u.id"
+                            class="border-b border-border/40 transition hover:bg-muted/40 last:border-0 dark:border-sidebar-border/60">
                             <td class="p-3">
                                 <div class="flex flex-col">
                                     <span class="font-medium text-foreground">{{ u.name }}</span>
@@ -230,31 +209,18 @@ defineOptions({
                                     <span class="font-mono text-xs font-semibold">
                                         {{ formatVnd(u.balance_vnd) }}
                                     </span>
-                                    <Link
-                                        :href="UserController.deposit.url({ user: u.id })"
+                                    <Link :href="UserController.deposit.url({ user: u.id })"
                                         class="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                                        title="Nạp / trừ tiền và xem lịch sử"
-                                    >
+                                        title="Nạp / trừ tiền và xem lịch sử">
                                         <Coins class="size-3" />
                                         Nạp tiền
                                     </Link>
                                 </div>
                             </td>
-                            <td class="p-3 text-center">
-                                <Link
-                                    :href="UserEventController.index.url({ user: u.id })"
-                                    class="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
-                                    :title="`Xem ${u.event_count} sự kiện đã tham gia`"
-                                >
-                                    <CalendarHeart class="size-3" />
-                                    {{ u.event_count }}
-                                </Link>
-                            </td>
+
                             <td class="p-3">
-                                <span
-                                    class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
-                                    :class="roleClass(u.role)"
-                                >
+                                <span class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
+                                    :class="roleClass(u.role)">
                                     {{ roleLabel(u.role) }}
                                 </span>
                             </td>
@@ -270,6 +236,14 @@ defineOptions({
                                 </div>
                                 <span v-else class="italic text-muted-foreground">Tự đăng ký</span>
                             </td>
+                            <td class="p-3 text-center">
+                                <Link :href="UserEventController.index.url({ user: u.id })"
+                                    class="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                                    :title="`Xem ${u.event_count} sự kiện đã tham gia`">
+                                    <CalendarHeart class="size-3" />
+                                    {{ u.event_count }}
+                                </Link>
+                            </td>
                             <td class="p-3 text-end">
                                 <div class="flex flex-wrap items-center justify-end gap-2">
                                     <Button size="sm" variant="outline" as-child>
@@ -284,22 +258,13 @@ defineOptions({
                                             Sửa
                                         </Link>
                                     </Button>
-                                    <Form
-                                        v-if="u.id !== currentUserId"
-                                        v-bind="UserController.destroy.form({ user: u.id })"
-                                        @submit="(event: SubmitEvent) => {
+                                    <Form v-if="u.id !== currentUserId"
+                                        v-bind="UserController.destroy.form({ user: u.id })" @submit="(event: SubmitEvent) => {
                                             if (!confirmDelete(u.name)) {
                                                 event.preventDefault();
                                             }
-                                        }"
-                                        #default="{ processing }"
-                                    >
-                                        <Button
-                                            type="submit"
-                                            variant="destructive"
-                                            size="sm"
-                                            :disabled="processing"
-                                        >
+                                        }" #default="{ processing }">
+                                        <Button type="submit" variant="destructive" size="sm" :disabled="processing">
                                             <Trash2 class="size-3.5" />
                                             Xóa
                                         </Button>
@@ -311,11 +276,7 @@ defineOptions({
                 </table>
             </div>
 
-            <Pagination
-                :meta="users"
-                :only="['users', 'filters']"
-                item-label="người dùng"
-            />
+            <Pagination :meta="users" :only="['users', 'filters']" item-label="người dùng" />
         </div>
     </div>
 </template>
