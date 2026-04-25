@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +18,9 @@ class ActivityLogController extends Controller
         $action = (string) $request->query('action', '');
         $actor = (int) $request->query('actor_id', 0);
         $target = (int) $request->query('target_user_id', 0);
+        $search = trim((string) $request->query('q', ''));
+        $dateFrom = (string) $request->query('date_from', '');
+        $dateTo = (string) $request->query('date_to', '');
         $perPage = max(10, min((int) $request->integer('per_page', 25), 100));
 
         $logs = ActivityLog::query()
@@ -24,6 +28,32 @@ class ActivityLogController extends Controller
             ->when($action !== '', fn ($q) => $q->where('action', $action))
             ->when($actor > 0, fn ($q) => $q->where('actor_id', $actor))
             ->when($target > 0, fn ($q) => $q->where('target_user_id', $target))
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.mb_strtolower($search).'%';
+                $query->where(function ($q) use ($like) {
+                    $q->whereRaw('LOWER(description) LIKE ?', [$like])
+                        ->orWhereHas('actor', function ($u) use ($like) {
+                            $u->whereRaw('LOWER(name) LIKE ?', [$like])
+                                ->orWhereRaw('LOWER(username) LIKE ?', [$like]);
+                        })
+                        ->orWhereHas('target', function ($u) use ($like) {
+                            $u->whereRaw('LOWER(name) LIKE ?', [$like])
+                                ->orWhereRaw('LOWER(username) LIKE ?', [$like]);
+                        });
+                });
+            })
+            ->when($dateFrom !== '', function ($query) use ($dateFrom) {
+                try {
+                    $query->where('created_at', '>=', Carbon::parse($dateFrom)->startOfDay());
+                } catch (\Throwable) {
+                }
+            })
+            ->when($dateTo !== '', function ($query) use ($dateTo) {
+                try {
+                    $query->where('created_at', '<=', Carbon::parse($dateTo)->endOfDay());
+                } catch (\Throwable) {
+                }
+            })
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString()
@@ -69,6 +99,9 @@ class ActivityLogController extends Controller
                 'action' => $action,
                 'actor_id' => $actor > 0 ? $actor : null,
                 'target_user_id' => $target > 0 ? $target : null,
+                'q' => $search,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
                 'per_page' => $perPage,
             ],
             'actionOptions' => $actionOptions,

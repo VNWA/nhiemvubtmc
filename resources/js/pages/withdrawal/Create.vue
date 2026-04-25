@@ -161,11 +161,7 @@ function statusChipClass(s: string): string {
                 <p class="text-xs text-stone-500">Chủ TK: <span class="font-semibold text-stone-700">{{
                     bank.bank_account_name }}</span></p>
             </div>
-            <Link :href="AccountController.editBank.url()"
-                class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-(--primary-1) underline">
-                Đổi tài khoản
-                <ChevronsRight class="size-3.5" />
-            </Link>
+
         </section>
 
         <form v-if="bankLinked" class="space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
@@ -199,8 +195,8 @@ function statusChipClass(s: string): string {
             </div>
 
             <div class="flex items-center gap-2 pt-1">
-                <CButton type="button" variant="outline" block
-                    :disabled="form.processing || form.amount_vnd === 0" @click="reset">
+                <CButton type="button" variant="outline" block :disabled="form.processing || form.amount_vnd === 0"
+                    @click="reset">
                     Đặt lại
                 </CButton>
                 <CButton type="submit" variant="gold" block

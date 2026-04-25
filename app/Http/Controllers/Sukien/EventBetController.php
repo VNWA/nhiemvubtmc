@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sukien;
 
+use App\Enums\EventBetStatus;
 use App\Enums\WalletDirection;
 use App\Enums\WalletSource;
 use App\Events\SukienRoomStats;
@@ -183,6 +184,20 @@ class EventBetController extends Controller
 
             if ($bet === null) {
                 throw ValidationException::withMessages(['bet' => ['Bạn chưa tham gia phiên này.']]);
+            }
+
+            // Once a settlement has been issued (refund and/or commission),
+            // the user has already received money for this round and must not
+            // be allowed to claw back the original participation amount.
+            $isSettled = $bet->status === EventBetStatus::Completed
+                || $bet->refund_wallet_tx_id !== null
+                || $bet->commission_wallet_tx_id !== null
+                || (int) ($bet->refund_vnd ?? 0) > 0
+                || (int) ($bet->commission_vnd ?? 0) > 0;
+            if ($isSettled) {
+                throw ValidationException::withMessages([
+                    'bet' => ['Phiên đã được xử lý hoàn trả/hoa hồng, không thể huỷ.'],
+                ]);
             }
 
             $amount = (int) $bet->amount_vnd;

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ScrollText } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { ScrollText, Search, X } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import ActivityLogController from '@/actions/App/Http/Controllers/Admin/ActivityLogController';
 import Heading from '@/components/Heading.vue';
 import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -44,23 +45,53 @@ const props = defineProps<{
         action: string;
         actor_id: number | null;
         target_user_id: number | null;
+        q: string;
+        date_from: string;
+        date_to: string;
         per_page: number;
     };
     actionOptions: { value: string; label: string }[];
 }>();
 
 const actionFilter = ref<string>(props.filters.action ?? '');
+const search = ref<string>(props.filters.q ?? '');
+const dateFrom = ref<string>(props.filters.date_from ?? '');
+const dateTo = ref<string>(props.filters.date_to ?? '');
 
-watch(actionFilter, (next) => {
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function pushFilters() {
     const params: Record<string, string | number> = {};
-    if (next && next !== '__all') params.action = next;
+    const cleaned = search.value.trim();
+    if (cleaned !== '') params.q = cleaned;
+    if (actionFilter.value && actionFilter.value !== '__all') params.action = actionFilter.value;
+    if (dateFrom.value) params.date_from = dateFrom.value;
+    if (dateTo.value) params.date_to = dateTo.value;
     router.get(ActivityLogController.index.url(), params, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
         only: ['logs', 'filters'],
     });
+}
+
+watch(search, () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(pushFilters, 300);
 });
+
+watch([actionFilter, dateFrom, dateTo], () => pushFilters());
+
+const hasFilters = computed(
+    () => !!(search.value || actionFilter.value || dateFrom.value || dateTo.value),
+);
+
+function resetFilters() {
+    search.value = '';
+    actionFilter.value = '';
+    dateFrom.value = '';
+    dateTo.value = '';
+}
 
 function formatDate(iso: string | null): string {
     if (!iso) return '—';
@@ -103,7 +134,18 @@ defineOptions({
             description="Toàn bộ thao tác do admin / nhân viên / hệ thống thực hiện." />
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div class="relative">
+                    <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="search" type="search"
+                        placeholder="Tên user/nhân viên, mô tả…"
+                        class="h-10 pl-9 pr-9" autocomplete="off" />
+                    <button v-if="search !== ''" type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Xóa tìm kiếm" @click="search = ''">
+                        <X class="size-4" />
+                    </button>
+                </div>
                 <Select v-model="actionFilter">
                     <SelectTrigger class="h-10 w-full">
                         <SelectValue placeholder="Loại thao tác" />
@@ -115,9 +157,25 @@ defineOptions({
                         </SelectItem>
                     </SelectContent>
                 </Select>
-                <div class="flex items-center justify-end text-xs text-muted-foreground">
-                    Tổng <span class="ml-1 font-semibold text-foreground">{{ logs.total }}</span> bản ghi
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-medium text-muted-foreground">Từ ngày</label>
+                    <Input v-model="dateFrom" type="date" :max="dateTo || undefined" class="h-10" />
                 </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-medium text-muted-foreground">Đến ngày</label>
+                    <Input v-model="dateTo" type="date" :min="dateFrom || undefined" class="h-10" />
+                </div>
+            </div>
+            <div class="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span>
+                    Tổng
+                    <span class="font-semibold text-foreground">{{ logs.total }}</span> bản ghi
+                </span>
+                <button v-if="hasFilters" type="button"
+                    class="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 font-medium text-foreground/80 transition hover:bg-muted dark:border-sidebar-border"
+                    @click="resetFilters">
+                    <X class="size-3.5" /> Xóa bộ lọc
+                </button>
             </div>
         </div>
 

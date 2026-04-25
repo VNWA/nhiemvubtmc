@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     CalendarHeart,
     Coins,
@@ -71,12 +71,10 @@ const props = defineProps<{
     users: Paginator;
     filters: {
         q: string;
-        role: string;
         status: string;
         manager_id: number | null;
         per_page: number;
     };
-    roleOptions: string[];
     statusOptions: { value: string; label: string }[];
     managerOptions: ManagerOption[];
 }>();
@@ -85,7 +83,6 @@ const page = usePage();
 const currentUserId = computed(() => page.props.auth.user?.id as number | undefined);
 
 const search = ref<string>(props.filters.q ?? '');
-const roleFilter = ref<string>(props.filters.role ?? '');
 const statusFilter = ref<string>(props.filters.status ?? '');
 const managerFilter = ref<string>(
     props.filters.manager_id !== null ? String(props.filters.manager_id) : '',
@@ -97,7 +94,6 @@ function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
     if (cleaned !== '') params.q = cleaned;
-    if (roleFilter.value && roleFilter.value !== '__all') params.role = roleFilter.value;
     if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
     if (managerFilter.value && managerFilter.value !== '__all') params.manager_id = managerFilter.value;
     if (props.filters.per_page && props.filters.per_page !== 15) params.per_page = props.filters.per_page;
@@ -115,50 +111,21 @@ watch(search, () => {
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
-watch([roleFilter, statusFilter, managerFilter], () => pushFilters());
+watch([statusFilter, managerFilter], () => pushFilters());
 
 function clearSearch() {
     search.value = '';
 }
 
 function resetFilters() {
-    roleFilter.value = '';
     statusFilter.value = '';
     managerFilter.value = '';
     search.value = '';
 }
 
 const hasFilters = computed(
-    () => !!(search.value || roleFilter.value || statusFilter.value || managerFilter.value),
+    () => !!(search.value || statusFilter.value || managerFilter.value),
 );
-
-function confirmDelete(name: string): boolean {
-    return window.confirm(`Xóa người dùng "${name}"?\n\nHành động này không thể hoàn tác.`);
-}
-
-function roleLabel(role: string): string {
-    switch (role) {
-        case 'admin':
-            return 'Admin';
-        case 'staff':
-            return 'Nhân viên';
-        case 'user':
-            return 'Khách hàng';
-        default:
-            return role;
-    }
-}
-
-function roleClass(role: string): string {
-    switch (role) {
-        case 'admin':
-            return 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300';
-        case 'staff':
-            return 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300';
-        default:
-            return 'bg-secondary text-secondary-foreground';
-    }
-}
 
 function statusClass(status: string): string {
     return status === 'locked'
@@ -206,9 +173,48 @@ async function togglePassword(row: Row) {
     }
 }
 
-function lockPrompt(row: Row): string | null {
-    if (row.status === 'locked') return null;
-    return window.prompt(`Lý do khóa tài khoản "${row.name}" (có thể bỏ trống):`, '') ?? '__cancel__';
+const rowProcessing = reactive<Record<number, boolean>>({});
+
+function deleteUser(row: Row) {
+    if (rowProcessing[row.id]) return;
+    if (!window.confirm(`Xóa người dùng "${row.name}"?\n\nHành động này không thể hoàn tác.`)) {
+        return;
+    }
+    rowProcessing[row.id] = true;
+    router.delete(UserController.destroy.url({ user: row.id }), {
+        preserveScroll: true,
+        onFinish: () => {
+            rowProcessing[row.id] = false;
+        },
+    });
+}
+
+function toggleLock(row: Row) {
+    if (rowProcessing[row.id]) return;
+
+    let reason = '';
+    if (row.status === 'active') {
+        const input = window.prompt(
+            `Lý do khóa tài khoản "${row.name}" (có thể bỏ trống):`,
+            '',
+        );
+        if (input === null) return;
+        reason = input;
+    } else if (!window.confirm(`Mở khóa tài khoản "${row.name}"?`)) {
+        return;
+    }
+
+    rowProcessing[row.id] = true;
+    router.post(
+        UserController.toggleLock.url({ user: row.id }),
+        { reason },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                rowProcessing[row.id] = false;
+            },
+        },
+    );
 }
 
 defineOptions({
@@ -230,7 +236,7 @@ defineOptions({
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" title="Người dùng"
-                description="Quản lý tài khoản, lọc theo vai trò / nhân viên quản lý / trạng thái." />
+                description="Quản lý tài khoản khách hàng, lọc theo nhân viên quản lý / trạng thái." />
             <Button as-child>
                 <Link :href="UserController.create.url()">
                     <UserPlus class="size-4" />
@@ -240,7 +246,7 @@ defineOptions({
         </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <div class="relative">
                     <Search
                         class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -252,18 +258,6 @@ defineOptions({
                         <X class="size-4" />
                     </button>
                 </div>
-
-                <Select v-if="roleOptions.length" v-model="roleFilter">
-                    <SelectTrigger class="h-10 w-full">
-                        <SelectValue placeholder="Vai trò" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all">Tất cả vai trò</SelectItem>
-                        <SelectItem v-for="r in roleOptions" :key="r" :value="r">
-                            {{ roleLabel(r) }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
 
                 <Select v-model="statusFilter">
                     <SelectTrigger class="h-10 w-full">
@@ -312,7 +306,6 @@ defineOptions({
                             <th class="p-3 font-semibold">Người dùng</th>
                             <th class="p-3 font-semibold">Mật khẩu</th>
                             <th class="p-3 font-semibold">Liên hệ</th>
-                            <th class="p-3 font-semibold">Vai trò</th>
                             <th class="p-3 font-semibold">Trạng thái</th>
                             <th class="p-3 font-semibold">Đăng nhập cuối</th>
                             <th class="p-3 font-semibold">Tạo lúc</th>
@@ -324,7 +317,7 @@ defineOptions({
                     </thead>
                     <tbody>
                         <tr v-if="users.data.length === 0">
-                            <td colspan="11" class="px-3 py-10 text-center text-sm text-muted-foreground">
+                            <td colspan="10" class="px-3 py-10 text-center text-sm text-muted-foreground">
                                 Không có người dùng phù hợp.
                             </td>
                         </tr>
@@ -361,12 +354,6 @@ defineOptions({
                                 </div>
                             </td>
 
-                            <td class="p-3">
-                                <span class="inline-flex rounded-md px-2 py-0.5 text-xs font-medium"
-                                    :class="roleClass(u.role)">
-                                    {{ roleLabel(u.role) }}
-                                </span>
-                            </td>
                             <td class="p-3">
                                 <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
                                     :class="statusClass(u.status)">
@@ -416,37 +403,21 @@ defineOptions({
                                             Sửa
                                         </Link>
                                     </Button>
-                                    <Form v-if="u.can_lock" v-bind="UserController.toggleLock.form({ user: u.id })"
-                                        @submit="(event: SubmitEvent) => {
-                                            if (u.status === 'active') {
-                                                const reason = lockPrompt(u);
-                                                if (reason === '__cancel__') {
-                                                    event.preventDefault();
-                                                    return;
-                                                }
-                                                const fd = (event.target as HTMLFormElement);
-                                                const input = fd.querySelector('input[name=reason]') as HTMLInputElement | null;
-                                                if (input && reason) input.value = reason;
-                                            }
-                                        }" #default="{ processing }">
-                                        <input type="hidden" name="reason" value="" />
-                                        <Button type="submit" size="sm"
-                                            :variant="u.status === 'locked' ? 'outline' : 'destructive'"
-                                            :disabled="processing">
-                                            <LockOpen v-if="u.status === 'locked'" class="size-3.5" />
-                                            <Lock v-else class="size-3.5" />
-                                            {{ u.status === 'locked' ? 'Mở khóa' : 'Khóa' }}
-                                        </Button>
-                                    </Form>
-                                    <Form v-if="u.id !== currentUserId"
-                                        v-bind="UserController.destroy.form({ user: u.id })" @submit="(event: SubmitEvent) => {
-                                            if (!confirmDelete(u.name)) event.preventDefault();
-                                        }" #default="{ processing }">
-                                        <Button type="submit" variant="destructive" size="sm" :disabled="processing">
-                                            <Trash2 class="size-3.5" />
-                                            Xóa
-                                        </Button>
-                                    </Form>
+                                    <Button v-if="u.can_lock" type="button" size="sm"
+                                        :variant="u.status === 'locked' ? 'outline' : 'destructive'"
+                                        :disabled="rowProcessing[u.id]"
+                                        @click="toggleLock(u)">
+                                        <LockOpen v-if="u.status === 'locked'" class="size-3.5" />
+                                        <Lock v-else class="size-3.5" />
+                                        {{ u.status === 'locked' ? 'Mở khóa' : 'Khóa' }}
+                                    </Button>
+                                    <Button v-if="u.id !== currentUserId" type="button"
+                                        variant="destructive" size="sm"
+                                        :disabled="rowProcessing[u.id]"
+                                        @click="deleteUser(u)">
+                                        <Trash2 class="size-3.5" />
+                                        Xóa
+                                    </Button>
                                 </div>
                             </td>
                         </tr>

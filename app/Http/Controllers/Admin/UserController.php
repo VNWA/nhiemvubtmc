@@ -60,7 +60,6 @@ class UserController extends Controller
         $isStaffOnly = $this->isStaffOnly($viewer);
 
         $search = trim((string) $request->query('q', ''));
-        $roleFilter = (string) $request->query('role', '');
         $statusFilter = (string) $request->query('status', '');
         $managerFilter = (int) $request->query('manager_id', 0);
         $perPage = (int) $request->integer('per_page', 15);
@@ -70,11 +69,11 @@ class UserController extends Controller
             ->with(['roles', 'creator:id,name,username'])
             ->withCount('eventBets')
             ->when($viewer !== null, fn ($query) => $query->whereKeyNot($viewer->getKey()))
+            // This screen lists customers only; admin/staff are managed on the dedicated staff page.
+            ->whereHas('roles', fn ($q) => $q->where('name', 'user'))
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['admin', 'staff']))
             ->when($isStaffOnly, function ($query) use ($viewer) {
-                $query->where('created_by', $viewer?->getKey())
-                    ->whereDoesntHave('roles', function ($q) {
-                        $q->whereIn('name', ['admin', 'staff']);
-                    });
+                $query->where('created_by', $viewer?->getKey());
             })
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.mb_strtolower($search).'%';
@@ -84,9 +83,6 @@ class UserController extends Controller
                         ->orWhereRaw('LOWER(email) LIKE ?', [$like])
                         ->orWhereRaw('LOWER(phone) LIKE ?', [$like]);
                 });
-            })
-            ->when(! $isStaffOnly && in_array($roleFilter, ['admin', 'staff', 'user'], true), function ($query) use ($roleFilter) {
-                $query->whereHas('roles', fn ($q) => $q->where('name', $roleFilter));
             })
             ->when(in_array($statusFilter, ['active', 'locked'], true), function ($query) use ($statusFilter) {
                 $query->where('status', $statusFilter);
@@ -103,12 +99,10 @@ class UserController extends Controller
             'users' => $users,
             'filters' => [
                 'q' => $search,
-                'role' => $roleFilter,
                 'status' => $statusFilter,
                 'manager_id' => $managerFilter > 0 ? $managerFilter : null,
                 'per_page' => $perPage,
             ],
-            'roleOptions' => $isStaffOnly ? [] : ['admin', 'staff', 'user'],
             'statusOptions' => collect(UserStatus::cases())
                 ->map(fn (UserStatus $s) => ['value' => $s->value, 'label' => $s->label()])
                 ->values(),

@@ -36,6 +36,8 @@ type UserBet = {
     option_ids: number[];
     option_labels: string[];
     amount_vnd: number;
+    status: 'pending' | 'completed';
+    is_settled: boolean;
 };
 
 const QUICK_AMOUNTS = [100_000, 300_000, 400_000, 500_000];
@@ -75,6 +77,7 @@ let unsubPresence: (() => void) | null = null;
 let presenceMembers: PresenceMember[] = [];
 let tickHandle: ReturnType<typeof setInterval> | null = null;
 let endReloadHandle: ReturnType<typeof setTimeout> | null = null;
+let settlementPollHandle: ReturnType<typeof setInterval> | null = null;
 
 function syncPresenceList() {
     presenceCount.value = presenceMembers.length;
@@ -200,6 +203,24 @@ onMounted(() => {
             syncPresenceList();
         },
     });
+
+    // While the user has an unsettled bet on an open round, lightly poll so
+    // settlements pushed by admin/staff (refund + commission) reflect in the
+    // UI quickly — otherwise the cancel button would stay visible until the
+    // next page refresh, even though the server already rejects the request.
+    settlementPollHandle = setInterval(() => {
+        const bet = liveUserBet.value;
+        if (!bet || bet.is_settled) {
+            return;
+        }
+        if (!liveOpenRound.value || timerExpired.value) {
+            return;
+        }
+        if (typeof document !== 'undefined' && document.hidden) {
+            return;
+        }
+        router.reload({ only: ['userBet', 'userBalanceVnd'] });
+    }, 6000);
 });
 
 onUnmounted(() => {
@@ -210,6 +231,9 @@ onUnmounted(() => {
     }
     if (endReloadHandle) {
         clearTimeout(endReloadHandle);
+    }
+    if (settlementPollHandle) {
+        clearInterval(settlementPollHandle);
     }
 });
 
@@ -240,6 +264,7 @@ function resetSelection() {
 }
 
 const hasPlacedBet = computed(() => liveUserBet.value !== null);
+const betSettled = computed(() => liveUserBet.value?.is_settled === true);
 
 function isSelected(optionId: number): boolean {
     return selectedIds.value.has(optionId);
@@ -330,9 +355,7 @@ function submitBet() {
         preserveScroll: true,
         onSuccess: () => {
             betForm.clearErrors();
-            liveBalance.value = Math.max(0, liveBalance.value - total);
             resetSelection();
-            router.reload({ only: ['userBet', 'betsStats', 'userBalanceVnd'] });
         },
     });
 }
@@ -345,22 +368,25 @@ function cancelAllBets() {
     if (!liveUserBet.value) {
         return;
     }
+    if (liveUserBet.value.is_settled) {
+        cancelError.value = 'Phiên đã được xử lý hoàn trả/hoa hồng, không thể huỷ.';
+        return;
+    }
     if (!confirm('Huỷ tham gia phiên này? Số tiền sẽ được hoàn lại số dư.')) {
         return;
     }
     cancelError.value = null;
     cancellingAll.value = true;
-    const refundAmount = liveUserBet.value.amount_vnd;
     cancelForm.delete(EventBetController.destroy.url(props.eventRoom.slug), {
         preserveScroll: true,
         onSuccess: () => {
-            liveBalance.value = liveBalance.value + refundAmount;
-            liveUserBet.value = null;
             cancellingAll.value = false;
-            router.reload({ only: ['userBet', 'betsStats', 'userBalanceVnd'] });
         },
         onError: (errors) => {
             cancelError.value = (errors.bet as string | undefined) ?? 'Không thể huỷ tham gia.';
+            cancellingAll.value = false;
+        },
+        onFinish: () => {
             cancellingAll.value = false;
         },
     });
@@ -524,14 +550,21 @@ async function loadMoreRounds() {
                             <strong class="font-mono text-sm">{{ formatVnd(placedAmount) }}</strong>
                             với mục:
                             <strong>{{ placedOptionLabels.join(', ') }}</strong>
+                            <span v-if="betSettled"
+                                class="ml-1 inline-flex items-center rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900">
+                                Đã xử lý
+                            </span>
                         </p>
-                        <CButton type="button" variant="danger" size="sm" class="cancel-bet-btn"
-                            :disabled="cancelForm.processing || timerExpired || cancelLocked"
+                        <CButton v-if="!betSettled" type="button" variant="danger" size="sm" class="cancel-bet-btn"
+                            :disabled="cancelForm.processing || timerExpired || cancelLocked || cancellingAll"
                             @click="cancelAllBets">
                             <X class="size-3.5" />
                             {{ cancellingAll ? 'Đang huỷ…' : 'Huỷ' }}
                         </CButton>
                     </div>
+                    <p v-if="betSettled" class="mt-1 text-[11px] text-emerald-800">
+                        Phiên đã được hoàn trả/hoa hồng. Số tiền tương ứng đã được cộng vào số dư.
+                    </p>
                 </div>
 
                 <div v-if="!hasPlacedBet">

@@ -40,7 +40,7 @@ const loadError = ref<string | null>(null);
 const FILTERS: Array<{ value: Filter; label: string }> = [
     { value: 'all', label: 'Tất cả' },
     { value: 'credit', label: 'Nạp tiền' },
-    { value: 'bet_place', label: 'Phí tham gia' },
+    { value: 'bet_place', label: 'Lệ phí' },
     { value: 'commission', label: 'Hoa hồng' },
     { value: 'debit', label: 'Rút tiền' },
 ];
@@ -153,7 +153,7 @@ function formatDateTime(iso: string | null): string {
                 <span class="ml-auto text-[11px] text-stone-500">{{ items.length }}/{{ total }}</span>
             </div>
 
-            <div class="mt-2 grid grid-cols-5 gap-1.5">
+            <div class="mt-2 grid grid-cols-5 gap-1">
                 <button v-for="f in FILTERS" :key="f.value" type="button" class="filter-chip"
                     :class="{ 'is-active': filter === f.value }" @click="setFilter(f.value)">
                     {{ f.label }}
@@ -203,16 +203,13 @@ function formatDateTime(iso: string | null): string {
                             {{ txTitle(tx) }}
                         </p>
                         <div class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-                            <span
-                                class="rounded border px-1.5 py-px text-[10px] font-semibold"
-                                :class="tx.source === 'commission'
-                                    ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
-                                    : tx.source === 'bet_place'
-                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                        : tx.direction === 'credit'
-                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                            : 'border-rose-200 bg-rose-50 text-rose-700'"
-                            >
+                            <span class="rounded border px-1.5 py-px text-[10px] font-semibold" :class="tx.source === 'commission'
+                                ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
+                                : tx.source === 'bet_place'
+                                    ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                    : tx.direction === 'credit'
+                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                        : 'border-rose-200 bg-rose-50 text-rose-700'">
                                 {{ tx.source_label }}
                             </span>
                             <span>{{ formatDateTime(tx.created_at) }}</span>
@@ -252,12 +249,12 @@ function formatDateTime(iso: string | null): string {
     align-items: center;
     justify-content: center;
     height: 2.25rem;
-    padding: 0 0.5rem;
+    padding: 0 2px;
     border: 1.5px solid rgb(231 229 228);
     border-radius: 0.625rem;
     background: white;
     color: rgb(68 64 60);
-    font-size: 0.8125rem;
+    font-size: 0.7rem;
     font-weight: 600;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
     transition: transform 100ms ease, border-color 150ms ease, background-color 150ms ease, color 150ms ease;

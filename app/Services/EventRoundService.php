@@ -17,7 +17,7 @@ class EventRoundService
 {
     public const MIN_DURATION_SECONDS = 10;
 
-    public const MAX_DURATION_SECONDS = 3600;
+    public const MAX_DURATION_SECONDS = 900;
 
     public function startRound(
         EventRoom $room,

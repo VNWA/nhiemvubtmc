@@ -104,16 +104,16 @@ defineOptions({
             <div class="flex items-center gap-2">
                 <Button variant="secondary" as-child>
                     <Link :href="UserController.index.url()">
-                    <ArrowLeft class="size-4" />
-                    Quay lại
+                        <ArrowLeft class="size-4" />
+                        Quay lại
                     </Link>
                 </Button>
             </div>
         </div>
 
-        <div
-            class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border">
-            <div class="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-4 py-3 text-sm dark:border-sidebar-border">
+        <div class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border">
+            <div
+                class="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-4 py-3 text-sm dark:border-sidebar-border">
                 <p class="flex items-center gap-2 text-muted-foreground">
                     <CalendarHeart class="size-4" />
                     Tổng <span class="font-semibold text-foreground">{{ bets.total }}</span> phiên tham gia
@@ -131,14 +131,13 @@ defineOptions({
                             🎬 {{ bet.room?.name ?? '—' }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                            📌 {{ bet.round?.name ?? '—' }}
+                            📌 {{ bet.option_labels.length ? bet.option_labels.join(', ') : '—' }}
+
+
                         </p>
                         <p class="text-[11px] text-muted-foreground">
-                            🕒 Phiên #{{ bet.id }} · Mục:
-                            <span class="font-medium text-foreground">{{
-                                bet.option_labels.length ? bet.option_labels.join(', ') : '—'
-                            }}</span>
-                            · {{ formatDate(bet.created_at) }}
+                            🕒 Phiên #{{ bet.id }} · {{ formatDate(bet.created_at) }}
+
                         </p>
                         <p class="text-xs">
                             <span class="text-muted-foreground">Kết quả hiện tại:</span>

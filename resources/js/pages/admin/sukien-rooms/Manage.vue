@@ -258,30 +258,30 @@ watch(
     },
 );
 
-const QUICK_MINUTES = [1, 2, 5, 10, 30];
-const minMinutes = Math.max(1, Math.ceil(props.durationLimits.minSeconds / 60));
-const maxMinutes = Math.max(minMinutes, Math.floor(props.durationLimits.maxSeconds / 60));
+const QUICK_SECONDS = [30, 45, 60, 90, 120];
+const minSeconds = Math.max(1, Math.floor(props.durationLimits.minSeconds));
+const maxSeconds = Math.max(minSeconds, Math.floor(props.durationLimits.maxSeconds));
 
-const startForm = useForm<{ name: string; duration_minutes: number; duration_seconds?: number }>({
+const startForm = useForm<{ name: string; duration_seconds: number }>({
     name: '',
-    duration_minutes: 2,
+    duration_seconds: 60,
 });
 
-function setDurationMinutes(m: number) {
-    const clamped = Math.max(minMinutes, Math.min(maxMinutes, Math.round(m)));
-    startForm.duration_minutes = clamped;
+function setDurationSeconds(s: number) {
+    const clamped = Math.max(minSeconds, Math.min(maxSeconds, Math.round(s)));
+    startForm.duration_seconds = clamped;
 }
 
 function submitStart() {
     startForm
         .transform((data) => {
-            const minutes = Math.max(
-                minMinutes,
-                Math.min(maxMinutes, Math.round(Number(data.duration_minutes) || 0)),
+            const seconds = Math.max(
+                minSeconds,
+                Math.min(maxSeconds, Math.round(Number(data.duration_seconds) || 0)),
             );
             return {
                 name: data.name,
-                duration_seconds: minutes * 60,
+                duration_seconds: seconds,
             };
         })
         .post(EventRoundController.start.url({ event_room: props.eventRoom.id }), {
@@ -483,7 +483,7 @@ function submitEnd() {
         <section v-else class="rounded-2xl border bg-card p-4">
             <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
-                Đặt tên phiên (tuỳ chọn) và thời lượng (phút). Khi hết giờ, phiên sẽ tự động kết thúc.
+                Đặt tên phiên (tuỳ chọn) và thời lượng (giây). Khi hết giờ, phiên sẽ tự động kết thúc.
             </p>
 
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -493,15 +493,15 @@ function submitEnd() {
                 </div>
 
                 <div>
-                    <Label for="duration">Thời lượng (phút) — {{ minMinutes }}–{{ maxMinutes }}</Label>
-                    <Input id="duration" v-model.number="startForm.duration_minutes" type="number" :min="minMinutes"
-                        :max="maxMinutes" class="mt-1" />
+                    <Label for="duration">Thời lượng (giây) — {{ minSeconds }}–{{ maxSeconds }}</Label>
+                    <Input id="duration" v-model.number="startForm.duration_seconds" type="number" :min="minSeconds"
+                        :max="maxSeconds" class="mt-1" />
                     <div class="mt-2 flex flex-wrap gap-1.5">
-                        <button v-for="m in QUICK_MINUTES" :key="m" type="button"
-                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs" :class="startForm.duration_minutes === m
+                        <button v-for="s in QUICK_SECONDS" :key="s" type="button"
+                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs" :class="startForm.duration_seconds === s
                                 ? 'bg-amber-500 text-white'
-                                : 'bg-stone-50 text-black'" @click="setDurationMinutes(m)">
-                            {{ m }} phút
+                                : 'bg-stone-50 text-black'" @click="setDurationSeconds(s)">
+                            {{ s }}s
                         </button>
                     </div>
                     <p v-if="startForm.errors.duration_seconds" class="mt-1 text-xs text-red-600">

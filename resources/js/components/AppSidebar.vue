@@ -66,11 +66,17 @@ const mainNavItems = computed((): NavItem[] => {
             href: EventRoomController.index.url(),
             icon: CalendarHeart,
         });
+    }
+
+    if (canManage) {
         items.push({
             title: 'Yêu cầu rút tiền',
             href: WithdrawalController.index.url(),
             icon: Banknote,
         });
+    }
+
+    if (isAdmin) {
         items.push({
             title: 'Lịch sử thao tác',
             href: ActivityLogController.index.url(),

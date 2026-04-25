@@ -68,7 +68,7 @@ function formatSigned(amount: number): string {
             <div class="mt-3">
                 <Link href="/sukien"
                     class="inline-flex items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition active:bg-amber-100">
-                Khám phá sự kiện
+                    Khám phá sự kiện
                 </Link>
             </div>
         </section>
@@ -83,7 +83,8 @@ function formatSigned(amount: number): string {
                         </p>
                         <p class="mt-0.5 flex items-center gap-1 text-xs text-stone-600">
                             <span aria-hidden="true">📌</span>
-                            <span class="truncate">Nhiệm vụ: {{ bet.round_name ?? '—' }}</span>
+                            <span class="truncate">Nhiệm vụ: {{
+                                bet.option_labels.join(', ') }}</span>
                         </p>
                     </div>
                     <span class="status-pill" :class="bet.status === 'completed' ? 'status-done' : 'status-pending'">
@@ -95,8 +96,6 @@ function formatSigned(amount: number): string {
                     <span class="inline-flex items-center gap-1">
                         <span aria-hidden="true">🕒</span> Phiên #{{ bet.id }}
                     </span>
-                    <span v-if="bet.option_labels.length">· Mục: <span class="font-medium text-stone-700">{{
-                        bet.option_labels.join(', ') }}</span></span>
                 </div>
 
                 <ul class="mt-3 grid grid-cols-1 gap-1.5 text-sm">
@@ -117,7 +116,7 @@ function formatSigned(amount: number): string {
                             <span aria-hidden="true">🎁</span> Hoa hồng
                         </span>
                         <span class="font-mono font-semibold text-fuchsia-600">+{{ formatVnd(bet.commission_vnd)
-                        }}</span>
+                            }}</span>
                     </li>
                 </ul>
 
@@ -149,7 +148,8 @@ function formatSigned(amount: number): string {
         </div>
 
         <p class="text-center text-[11px] text-stone-400">
-            Số dư hiện tại: <span class="font-mono font-semibold text-stone-600">{{ formatVnd(props.balanceVnd) }}</span>
+            Số dư hiện tại: <span class="font-mono font-semibold text-stone-600">{{ formatVnd(props.balanceVnd)
+                }}</span>
         </p>
     </div>
 </template>

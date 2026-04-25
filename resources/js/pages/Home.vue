@@ -16,6 +16,8 @@ type Shortcut = {
 const banners: string[] = [
     '/images/banner/banner1.png',
     '/images/banner/banner2.jpg',
+    '/images/banner/banner4.jpg',
+
 ];
 
 const shortcuts: Shortcut[] = [
@@ -42,12 +44,12 @@ const shortcuts: Shortcut[] = [
 
 <template>
     <div class="space-y-4 pb-24">
-        <div class="overflow-hidden rounded-xl border border-stone-100 shadow-sm">
+        <div class="overflow-hidden border border-stone-100 shadow-sm">
             <Swiper :modules="[Autoplay, Pagination]" :loop="banners.length > 1"
                 :autoplay="{ delay: 4000, disableOnInteraction: false }" :pagination="{ clickable: true }"
                 :slides-per-view="1" :space-between="0" class="home-banner-swiper">
                 <SwiperSlide v-for="(src, i) in banners" :key="i">
-                    <img :src="src" :alt="`Banner ${i + 1}`" class="h-[300px] w-full object-cover" />
+                    <img :src="src" :alt="`Banner ${i + 1}`" class="h-full w-full " />
                 </SwiperSlide>
             </Swiper>
         </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sukien;
 
+use App\Enums\EventBetStatus;
 use App\Enums\EventRoundStatus;
 use App\Http\Controllers\Controller;
 use App\Models\EventBet;
@@ -74,11 +75,18 @@ class SukienEventRoomController extends Controller
                 $labels = $bet->selectedOptionLabels(
                     $room->options->keyBy('id')
                 );
+                $isSettled = $bet->status === EventBetStatus::Completed
+                    || $bet->refund_wallet_tx_id !== null
+                    || $bet->commission_wallet_tx_id !== null
+                    || (int) ($bet->refund_vnd ?? 0) > 0
+                    || (int) ($bet->commission_vnd ?? 0) > 0;
                 $userBet = [
                     'id' => (int) $bet->getKey(),
                     'option_ids' => $optionIds,
                     'option_labels' => $labels,
                     'amount_vnd' => (int) $bet->amount_vnd,
+                    'status' => $bet->status?->value ?? 'pending',
+                    'is_settled' => $isSettled,
                 ];
             }
         }

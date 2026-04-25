@@ -69,14 +69,6 @@ const menuItems = computed<MenuItem[]>(() => [
         description: `${props.eventCount ?? 0} phiên đã ghi nhận`,
     },
     {
-        href: AccountController.report.url(),
-        icon: BarChart3,
-        iconBg: 'bg-sky-100',
-        iconColor: 'text-sky-700',
-        title: 'Báo cáo tài chính',
-        description: 'Tổng quan số dư, nạp/rút và chi tiêu',
-    },
-    {
         href: AccountController.wallet.url(),
         icon: History,
         iconBg: 'bg-amber-100',
@@ -128,7 +120,8 @@ function doLogout() {
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p class="balance-label">Số dư hiện tại</p>
-                    <p class="mt-1 truncate font-mono text-3xl font-bold leading-tight">{{ formatVnd(balanceVnd) }}</p>
+                    <p class="mt-1 truncate  text-2xl font-bold leading-tight">{{ formatVnd(balanceVnd) }}
+                    </p>
                     <p class="balance-sub mt-1">{{ profile.name }} · @{{ profile.username }}</p>
                 </div>
                 <div class="balance-icon">
