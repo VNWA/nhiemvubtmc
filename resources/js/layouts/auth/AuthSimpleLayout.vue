@@ -19,7 +19,7 @@ defineProps<{
 
         <main class="auth-card-wrap">
             <Link :href="home()" class="auth-brand">
-                <img src="/images/logo.png" alt="SJC" class="auth-logo" />
+                <img src="/images/logo-blue.png" alt="SJC" class="auth-logo" />
             </Link>
 
             <section class="auth-card">
@@ -146,13 +146,11 @@ defineProps<{
     inset-inline: 0;
     top: 0;
     height: 4px;
-    background: linear-gradient(
-        90deg,
-        var(--primary-1, #0d4f9e) 0%,
-        var(--primary-1, #0d4f9e) 50%,
-        var(--primary-2, #e8a500) 50%,
-        var(--primary-2, #e8a500) 100%
-    );
+    background: linear-gradient(90deg,
+            var(--primary-1, #0d4f9e) 0%,
+            var(--primary-1, #0d4f9e) 50%,
+            var(--primary-2, #e8a500) 50%,
+            var(--primary-2, #e8a500) 100%);
 }
 
 .auth-card-heading {

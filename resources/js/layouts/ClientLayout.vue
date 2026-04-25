@@ -55,7 +55,7 @@ const currentUrl = computed<string>(() => {
             <header class="client-header">
                 <div class="flex items-center justify-between gap-2">
                     <Link :href="home().url" class="client-header-brand">
-                        <img src="/images/logo.png" alt="SJC" class="client-header-logo" />
+                        <img src="/images/logo-blue.png" alt="SJC" class="client-header-logo" />
                         <span class="client-header-title">
                             <span class="title">{{ page.props.name }}</span>
                             <span class="subtitle">Vàng · Bạc · Đá quý</span>
