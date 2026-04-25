@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
+import CurrencyInput from '@/components/CurrencyInput.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -29,7 +29,7 @@ type Bet = {
     status_label: string;
     net_vnd: number;
     created_at: string | null;
-    option_label: string | null;
+    option_labels: string[];
     round: { id: number; number: number; name: string | null } | null;
     room: { id: number; name: string; slug: string } | null;
 };
@@ -131,11 +131,13 @@ defineOptions({
                             🎬 {{ bet.room?.name ?? '—' }}
                         </p>
                         <p class="text-xs text-muted-foreground">
-                            📌 {{ bet.round?.name ?? bet.option_label ?? '—' }}
+                            📌 {{ bet.round?.name ?? '—' }}
                         </p>
                         <p class="text-[11px] text-muted-foreground">
-                            🕒 Phiên #{{ bet.id }} · Đáp án: <span class="font-medium text-foreground">{{ bet.option_label
-                                ?? '—' }}</span>
+                            🕒 Phiên #{{ bet.id }} · Mục:
+                            <span class="font-medium text-foreground">{{
+                                bet.option_labels.length ? bet.option_labels.join(', ') : '—'
+                            }}</span>
                             · {{ formatDate(bet.created_at) }}
                         </p>
                         <p class="text-xs">
@@ -153,26 +155,26 @@ defineOptions({
                             <div class="grid gap-1">
                                 <Label class="text-[11px]">Phí tham gia</Label>
                                 <div
-                                    class="flex h-9 items-center rounded-md border border-input bg-muted/30 px-2 font-mono text-xs">
+                                    class="flex h-11 items-center justify-end rounded-[0.625rem] border border-input bg-muted/40 px-3 font-mono text-sm font-semibold tracking-wide">
                                     {{ formatVnd(bet.amount_vnd) }}
                                 </div>
                             </div>
                             <div class="grid gap-1">
                                 <Label :for="`refund-${bet.id}`" class="text-[11px]">Hoàn trả</Label>
-                                <Input :id="`refund-${bet.id}`" v-model.number="drafts[bet.id].refund_vnd" name="refund_vnd"
-                                    type="number" min="0" step="1000" class="h-9 font-mono" />
+                                <CurrencyInput :id="`refund-${bet.id}`" v-model="drafts[bet.id].refund_vnd"
+                                    name="refund_vnd" :max="1_000_000_000" placeholder="0" />
                                 <InputError :message="errors.refund_vnd" />
                             </div>
                             <div class="grid gap-1">
                                 <Label :for="`commission-${bet.id}`" class="text-[11px]">Hoa hồng</Label>
-                                <Input :id="`commission-${bet.id}`" v-model.number="drafts[bet.id].commission_vnd"
-                                    name="commission_vnd" type="number" min="0" step="1000" class="h-9 font-mono" />
+                                <CurrencyInput :id="`commission-${bet.id}`" v-model="drafts[bet.id].commission_vnd"
+                                    name="commission_vnd" :max="1_000_000_000" placeholder="0" />
                                 <InputError :message="errors.commission_vnd" />
                             </div>
                             <div class="grid gap-1">
                                 <Label :for="`status-${bet.id}`" class="text-[11px]">Trạng thái</Label>
                                 <Select v-model="drafts[bet.id].status">
-                                    <SelectTrigger :id="`status-${bet.id}`" class="h-9 w-full">
+                                    <SelectTrigger :id="`status-${bet.id}`" class="status-trigger w-full">
                                         <SelectValue placeholder="Chọn trạng thái" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -197,3 +199,9 @@ defineOptions({
         </div>
     </div>
 </template>
+
+<style scoped>
+.status-trigger {
+    height: 2.75rem;
+}
+</style>

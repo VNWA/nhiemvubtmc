@@ -7,7 +7,6 @@ use App\Events\SukienRoundEnded;
 use App\Events\SukienRoundStarted;
 use App\Jobs\AutoEndExpiredRoundJob;
 use App\Models\EventRoom;
-use App\Models\EventRoomOption;
 use App\Models\EventRound;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -22,7 +21,6 @@ class EventRoundService
 
     public function startRound(
         EventRoom $room,
-        int $presetOptionId,
         User $admin,
         ?string $displayName = null,
         ?int $durationSeconds = null,
@@ -45,30 +43,19 @@ class EventRoundService
             }
         }
 
-        $round = DB::transaction(function () use ($room, $presetOptionId, $displayName, $durationSeconds) {
+        $round = DB::transaction(function () use ($room, $displayName, $durationSeconds) {
             /** @var EventRoom $lockedRoom */
             $lockedRoom = EventRoom::query()->whereKey($room->getKey())->lockForUpdate()->firstOrFail();
 
             if (! $lockedRoom->is_active) {
                 throw ValidationException::withMessages([
-                    'preset_option_id' => ['Phòng đang tạm dừng, không thể mở kỳ mới.'],
+                    'round' => ['Phòng đang tạm dừng, không thể mở phiên mới.'],
                 ]);
             }
 
             if (EventRound::query()->where('event_room_id', $lockedRoom->getKey())->where('status', EventRoundStatus::Open)->exists()) {
                 throw ValidationException::withMessages([
-                    'preset_option_id' => ['Vui lòng kết thúc kỳ hiện tại trước khi mở kỳ mới.'],
-                ]);
-            }
-
-            $option = EventRoomOption::query()
-                ->where('event_room_id', $lockedRoom->getKey())
-                ->whereKey($presetOptionId)
-                ->first();
-
-            if ($option === null) {
-                throw ValidationException::withMessages([
-                    'preset_option_id' => ['Kết quả định sẵn không thuộc phòng này.'],
+                    'round' => ['Vui lòng kết thúc phiên hiện tại trước khi mở phiên mới.'],
                 ]);
             }
 
@@ -78,7 +65,7 @@ class EventRoundService
 
             $name = $displayName !== null && trim($displayName) !== ''
                 ? mb_substr(trim($displayName), 0, 120)
-                : sprintf('Kỳ #%d', $nextNumber);
+                : sprintf('Phiên #%d', $nextNumber);
 
             $startedAt = now();
             $autoEndAt = $durationSeconds !== null
@@ -90,25 +77,16 @@ class EventRoundService
                 'round_number' => $nextNumber,
                 'name' => $name,
                 'status' => EventRoundStatus::Open,
-                'preset_option_id' => $option->getKey(),
                 'duration_seconds' => $durationSeconds,
                 'started_at' => $startedAt,
                 'auto_end_at' => $autoEndAt,
                 'ended_at' => null,
             ]);
 
-            $presetPayload = [
-                'id' => (int) $option->getKey(),
-                'label' => $option->label,
-                'bg_color' => $option->bg_color,
-                'text_color' => $option->text_color,
-            ];
-
             event(new SukienRoundStarted(
                 (int) $lockedRoom->getKey(),
                 (int) $round->getKey(),
                 (int) $round->round_number,
-                $presetPayload,
                 $autoEndAt?->toIso8601String(),
             ));
 
@@ -151,31 +129,21 @@ class EventRoundService
             if ($locked->status !== EventRoundStatus::Open) {
                 if ($throwIfClosed) {
                     throw ValidationException::withMessages([
-                        'round' => ['Kỳ này đã kết thúc.'],
+                        'round' => ['Phiên này đã kết thúc.'],
                     ]);
                 }
 
                 return;
             }
 
-            $locked->load('presetOption');
             $locked->status = EventRoundStatus::Closed;
             $locked->ended_at = Carbon::now();
             $locked->save();
-
-            $opt = $locked->presetOption;
-            $presetPayload = [
-                'id' => (int) $opt->getKey(),
-                'label' => $opt->label,
-                'bg_color' => $opt->bg_color,
-                'text_color' => $opt->text_color,
-            ];
 
             event(new SukienRoundEnded(
                 (int) $locked->event_room_id,
                 (int) $locked->getKey(),
                 (int) $locked->round_number,
-                $presetPayload,
             ));
         });
     }

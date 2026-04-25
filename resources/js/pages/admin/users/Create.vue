@@ -17,12 +17,20 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 
+type ManagerOption = { id: number; name: string; username: string };
+
 const props = defineProps<{
     roleOptions: string[];
+    managerOptions: ManagerOption[];
+    defaultManagerId: number;
+    canAssignManager: boolean;
 }>();
 
 const selectedRole = ref<string>(
     props.roleOptions.includes('user') ? 'user' : props.roleOptions[0] ?? '',
+);
+const selectedManager = ref<string>(
+    props.defaultManagerId > 0 ? String(props.defaultManagerId) : '',
 );
 
 function roleLabel(role: string): string {
@@ -97,6 +105,28 @@ defineOptions({
                 </Select>
                 <input type="hidden" name="role" :value="selectedRole" />
                 <InputError :message="errors.role" />
+            </div>
+            <div v-if="canAssignManager && managerOptions.length" class="grid gap-2">
+                <Label for="created_by">Nhân viên quản lý</Label>
+                <Select v-model="selectedManager">
+                    <SelectTrigger id="created_by" class="w-full">
+                        <SelectValue placeholder="Chọn nhân viên quản lý" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="m in managerOptions"
+                            :key="m.id"
+                            :value="String(m.id)"
+                        >
+                            {{ m.name }} (@{{ m.username }})
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+                <input type="hidden" name="created_by" :value="selectedManager" />
+                <InputError :message="errors.created_by" />
+                <p class="text-xs text-muted-foreground">
+                    Mặc định là chính bạn — có thể giao cho nhân viên khác phụ trách.
+                </p>
             </div>
             <div class="grid gap-2">
                 <Label for="password">Mật khẩu</Label>

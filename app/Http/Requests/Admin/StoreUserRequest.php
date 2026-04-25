@@ -27,6 +27,7 @@ class StoreUserRequest extends FormRequest
             'username' => $this->usernameRules(),
             'password' => $this->passwordRules(),
             'role' => ['required', 'in:admin,staff,user'],
+            'created_by' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 

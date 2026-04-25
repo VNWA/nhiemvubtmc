@@ -12,14 +12,10 @@ class SukienRoundStarted implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * @param  array{id: int, label: string, bg_color: string, text_color: string}  $presetOption
-     */
     public function __construct(
         public int $eventRoomId,
         public int $eventRoundId,
         public int $roundNumber,
-        public array $presetOption,
         public ?string $autoEndAt = null,
     ) {}
 
@@ -45,7 +41,6 @@ class SukienRoundStarted implements ShouldBroadcastNow
             'eventRoomId' => $this->eventRoomId,
             'eventRoundId' => $this->eventRoundId,
             'roundNumber' => $this->roundNumber,
-            'presetOption' => $this->presetOption,
             'autoEndAt' => $this->autoEndAt,
         ];
     }

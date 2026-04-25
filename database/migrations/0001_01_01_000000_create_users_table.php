@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
@@ -16,9 +13,25 @@ return new class extends Migration
             $table->string('name');
             $table->string('username')->unique();
             $table->string('email')->unique();
+            $table->string('phone', 20)->nullable();
+            $table->string('status', 16)->default('active');
+            $table->timestamp('locked_at')->nullable();
+            $table->foreignId('locked_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('lock_reason', 255)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->text('password_hint')->nullable();
+            $table->unsignedBigInteger('balance_vnd')->default(0);
+            $table->string('bank_name', 120)->nullable();
+            $table->string('bank_account_number', 64)->nullable();
+            $table->string('bank_account_name', 160)->nullable();
+            $table->text('two_factor_secret')->nullable();
+            $table->text('two_factor_recovery_codes')->nullable();
+            $table->timestamp('two_factor_confirmed_at')->nullable();
             $table->rememberToken();
+            $table->ipAddress('last_login_ip')->nullable();
+            $table->timestamp('last_login_at')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
 
@@ -38,9 +51,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

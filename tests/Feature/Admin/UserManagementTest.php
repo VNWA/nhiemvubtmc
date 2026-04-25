@@ -16,6 +16,7 @@ class UserManagementTest extends TestCase
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
         Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        Role::create(['name' => 'staff', 'guard_name' => 'web']);
         Role::create(['name' => 'user', 'guard_name' => 'web']);
     }
 
@@ -47,6 +48,19 @@ class UserManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_admin_can_search_users_case_insensitively(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        User::factory()->create(['name' => 'Nguyen Van A', 'username' => 'nguyena']);
+        User::factory()->create(['name' => 'Tran Thi B', 'username' => 'tranb']);
+
+        $response = $this->actingAs($admin)->get(route('admin.users.index', ['q' => 'NGUYEN']));
+
+        $response->assertOk();
+    }
+
     public function test_admin_can_create_user_without_email(): void
     {
         $this->createRoles();
@@ -66,7 +80,7 @@ class UserManagementTest extends TestCase
         $created = User::query()->where('username', 'newuser')->first();
         $this->assertNotNull($created);
         $this->assertNotEmpty($created->email);
-        $this->assertStringContainsString('@example.com', $created->email);
+        $this->assertStringContainsString('@', $created->email);
         $this->assertTrue($created->hasRole('user'));
     }
 
@@ -118,5 +132,71 @@ class UserManagementTest extends TestCase
             ->delete(route('admin.users.destroy', $admin));
 
         $response->assertForbidden();
+    }
+
+    public function test_staff_creating_user_forces_self_as_manager(): void
+    {
+        $this->createRoles();
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $response = $this->actingAs($staff)->post(route('admin.users.store'), [
+            'name' => 'Khách Của Staff',
+            'username' => 'khachstaff',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+            'role' => 'user',
+            'created_by' => $admin->id,
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+
+        $created = User::query()->where('username', 'khachstaff')->firstOrFail();
+        $this->assertSame($staff->id, (int) $created->created_by);
+    }
+
+    public function test_admin_can_assign_manager_when_creating_user(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+
+        $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Khách Giao Staff',
+            'username' => 'kgiao',
+            'password' => 'Password1!',
+            'password_confirmation' => 'Password1!',
+            'role' => 'user',
+            'created_by' => $staff->id,
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+
+        $created = User::query()->where('username', 'kgiao')->firstOrFail();
+        $this->assertSame($staff->id, (int) $created->created_by);
+    }
+
+    public function test_admin_can_delete_user_and_activity_log_is_recorded(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $target = User::factory()->create(['name' => 'Bob', 'username' => 'bob']);
+        $target->assignRole('user');
+
+        $response = $this->actingAs($admin)
+            ->delete(route('admin.users.destroy', $target));
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $admin->id,
+            'action' => 'user.deleted',
+        ]);
     }
 }

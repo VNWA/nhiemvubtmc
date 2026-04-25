@@ -21,7 +21,7 @@ defineProps<{
 
 function confirmDelete(name: string): boolean {
     return window.confirm(
-        `Xóa phòng "${name}"?\n\nTất cả kỳ, cược và cấu hình mặt cược sẽ bị xóa. Các cược trong kỳ đang mở sẽ được hoàn tiền vào số dư người chơi.\n\nHành động này không thể hoàn tác.`,
+        `Xóa phòng "${name}"?\n\nTất cả phiên, cược và cấu hình mặt cược sẽ bị xóa. Các cược trong phiên đang mở sẽ được hoàn tiền vào số dư người chơi.\n\nHành động này không thể hoàn tác.`,
     );
 }
 
@@ -35,11 +35,13 @@ defineOptions({
 </script>
 
 <template>
+
     <Head title="Phòng sự kiện" />
 
     <div class="flex flex-col gap-6 p-4">
         <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <Heading title="Phòng sự kiện" description="Tạo phòng, cấu hình các mặt kết quả, điều hành kỳ tại trang phòng" />
+            <Heading title="Phòng sự kiện"
+                description="Tạo phòng, cấu hình các mặt kết quả, điều hành phiên tại trang phòng" />
             <div class="flex flex-wrap gap-2">
                 <Button as-child>
                     <Link :href="EventRoomController.create.url()">Tạo phòng</Link>
@@ -48,13 +50,11 @@ defineOptions({
         </div>
 
         <ul class="space-y-2">
-            <li
-                v-for="r in rooms"
-                :key="r.id"
-                class="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
+            <li v-for="r in rooms" :key="r.id"
+                class="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                    <div
+                        class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
                         <img v-if="r.avatar_url" :src="r.avatar_url" :alt="r.name" class="size-full object-cover" />
                         <span v-else class="text-xs text-muted-foreground">N/A</span>
                     </div>
@@ -64,7 +64,8 @@ defineOptions({
                                 {{ r.name }}
                             </Link>
                         </p>
-                        <p class="text-sm text-muted-foreground">/{{ r.slug }} · {{ r.options_count }} mặt cược · {{ r.is_active ? 'Đang bật' : 'Tắt' }}</p>
+                        <p class="text-sm text-muted-foreground">/{{ r.slug }} · {{ r.options_count }} mặt cược · {{
+                            r.is_active ? 'Đang bật' : 'Tắt' }}</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -77,21 +78,12 @@ defineOptions({
                     <Button as-child variant="secondary" size="sm">
                         <Link :href="EventRoomController.edit.url(r.id)">Sửa</Link>
                     </Button>
-                    <Form
-                        v-bind="EventRoomController.destroy.form({ event_room: r.id })"
-                        @submit="(event: SubmitEvent) => {
-                            if (!confirmDelete(r.name)) {
-                                event.preventDefault();
-                            }
-                        }"
-                        #default="{ processing }"
-                    >
-                        <Button
-                            type="submit"
-                            variant="destructive"
-                            size="sm"
-                            :disabled="processing"
-                        >
+                    <Form v-bind="EventRoomController.destroy.form({ event_room: r.id })" @submit="(event: SubmitEvent) => {
+                        if (!confirmDelete(r.name)) {
+                            event.preventDefault();
+                        }
+                    }" #default="{ processing }">
+                        <Button type="submit" variant="destructive" size="sm" :disabled="processing">
                             <Trash2 class="size-3.5" />
                             Xóa
                         </Button>

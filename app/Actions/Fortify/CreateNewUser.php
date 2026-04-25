@@ -32,6 +32,7 @@ class CreateNewUser implements CreatesNewUsers
             'username' => $input['username'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'password_hint' => $input['password'],
         ]);
 
         Role::firstOrCreate(

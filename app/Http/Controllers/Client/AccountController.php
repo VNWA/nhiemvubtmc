@@ -7,7 +7,6 @@ use App\Enums\WalletDirection;
 use App\Enums\WalletSource;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\UpdateAccountRequest;
-use App\Http\Requests\Client\UpdateBankAccountRequest;
 use App\Http\Requests\Client\UpdatePasswordRequest;
 use App\Models\EventBet;
 use App\Models\User;
@@ -66,7 +65,6 @@ class AccountController extends Controller
             ->with([
                 'eventRound:id,event_room_id,round_number,name',
                 'eventRound.eventRoom:id,name,slug',
-                'option:id,label',
             ])
             ->where('user_id', $user->getKey())
             ->orderByDesc('id')
@@ -87,7 +85,7 @@ class AccountController extends Controller
                     'status' => $status->value,
                     'status_label' => $status->label(),
                     'created_at' => $bet->created_at?->toIso8601String(),
-                    'option_label' => $bet->option?->label,
+                    'option_labels' => $bet->selectedOptionLabels(),
                     'round_name' => $bet->eventRound?->name,
                     'round_number' => (int) ($bet->eventRound?->round_number ?? 0),
                     'room_name' => $bet->eventRound?->eventRoom?->name,
@@ -146,19 +144,7 @@ class AccountController extends Controller
 
         return Inertia::render('account/BankAccount', [
             'bank' => $this->bankPayload($user),
-            'bankOptions' => $this->bankOptions(),
         ]);
-    }
-
-    public function updateBank(UpdateBankAccountRequest $request): RedirectResponse
-    {
-        $user = $request->user();
-        abort_if($user === null, 403);
-
-        $user->fill($request->validated());
-        $user->save();
-
-        return to_route('account.bank.edit')->with('success', 'Đã cập nhật thông tin ngân hàng.');
     }
 
     public function report(Request $request): Response
@@ -303,8 +289,11 @@ class AccountController extends Controller
             'credit' => $query
                 ->where('direction', WalletDirection::Credit->value)
                 ->where('source', '<>', WalletSource::Commission->value),
-            'debit' => $query->where('direction', WalletDirection::Debit->value),
+            'debit' => $query
+                ->where('direction', WalletDirection::Debit->value)
+                ->where('source', '<>', WalletSource::BetPlace->value),
             'commission' => $query->where('source', WalletSource::Commission->value),
+            'bet_place' => $query->where('source', WalletSource::BetPlace->value),
             default => null,
         };
     }
@@ -313,7 +302,7 @@ class AccountController extends Controller
     {
         $value = is_string($raw) ? $raw : 'all';
 
-        return in_array($value, ['all', 'credit', 'debit', 'commission'], true) ? $value : 'all';
+        return in_array($value, ['all', 'credit', 'debit', 'commission', 'bet_place'], true) ? $value : 'all';
     }
 
     /**
@@ -354,41 +343,6 @@ class AccountController extends Controller
             'bank_name' => $user->bank_name,
             'bank_account_number' => $user->bank_account_number,
             'bank_account_name' => $user->bank_account_name,
-        ];
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function bankOptions(): array
-    {
-        return [
-            'Vietcombank',
-            'VietinBank',
-            'BIDV',
-            'Agribank',
-            'Techcombank',
-            'MB Bank',
-            'ACB',
-            'VPBank',
-            'Sacombank',
-            'TPBank',
-            'HDBank',
-            'SHB',
-            'OCB',
-            'SeABank',
-            'VIB',
-            'MSB',
-            'Eximbank',
-            'LienVietPostBank',
-            'NamABank',
-            'DongABank',
-            'SCB',
-            'BacABank',
-            'KienLongBank',
-            'PVcomBank',
-            'Cake by VPBank',
-            'Timo',
         ];
     }
 

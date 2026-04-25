@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AppearanceController;
 use App\Http\Controllers\Admin\EventRoomController;
 use App\Http\Controllers\Admin\EventRoundController;
+use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserEventController;
 use App\Http\Controllers\Admin\WithdrawalController as AdminWithdrawalController;
@@ -35,7 +37,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('mat-khau', 'editPassword')->name('password.edit');
         Route::put('mat-khau', 'updatePassword')->middleware('throttle:6,1')->name('password.update');
         Route::get('ngan-hang', 'editBank')->name('bank.edit');
-        Route::put('ngan-hang', 'updateBank')->name('bank.update');
         Route::get('bao-cao', 'report')->name('report');
         Route::get('vi', 'wallet')->name('wallet');
         Route::get('vi/data', 'walletData')->name('wallet.data');
@@ -67,8 +68,10 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::post('/', 'store')->name('store');
                 Route::get('{user}/edit', 'edit')->name('edit');
                 Route::get('{user}/deposit', 'deposit')->name('deposit');
+                Route::get('{user}/password', 'password')->name('password');
                 Route::match(['put', 'patch'], '{user}', 'update')->name('update');
                 Route::post('{user}/balance', 'adjustBalance')->name('balance.adjust');
+                Route::post('{user}/lock', 'toggleLock')->name('lock');
                 Route::delete('{user}', 'destroy')->name('destroy');
             });
 
@@ -79,6 +82,19 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
         });
 
         Route::middleware('role:admin')->group(function () {
+            Route::prefix('staff')->name('staff.')->controller(StaffController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('{staff}/edit', 'edit')->name('edit');
+                Route::get('{staff}/password', 'password')->name('password');
+                Route::match(['put', 'patch'], '{staff}', 'update')->name('update');
+                Route::post('{staff}/lock', 'toggleLock')->name('lock');
+                Route::delete('{staff}', 'destroy')->name('destroy');
+            });
+
+            Route::get('activities', [ActivityLogController::class, 'index'])->name('activities.index');
+
             Route::prefix('appearance')->name('appearance.')->controller(AppearanceController::class)->group(function () {
                 Route::get('{name}', 'view')->name('view');
                 Route::get('{key}/load', 'load')->name('load');
@@ -97,6 +113,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::post('/', [EventRoomController::class, 'store'])->name('store');
                 Route::get('{event_room}/edit', [EventRoomController::class, 'edit'])->name('edit');
                 Route::get('{event_room}/manage', [EventRoomController::class, 'manage'])->name('manage');
+                Route::patch('{event_room}/viewer-offset', [EventRoomController::class, 'updateViewerOffset'])->name('viewer-offset');
                 Route::match(['put', 'patch'], '{event_room}', [EventRoomController::class, 'update'])->name('update');
                 Route::delete('{event_room}', [EventRoomController::class, 'destroy'])->name('destroy');
                 Route::post('{event_room}/rounds/start', [EventRoundController::class, 'start'])->name('rounds.start');

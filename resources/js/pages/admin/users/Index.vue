@@ -1,13 +1,32 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { CalendarHeart, Coins, Pencil, Search, Trash2, UserPlus, X } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import {
+    CalendarHeart,
+    Coins,
+    Eye,
+    EyeOff,
+    Lock,
+    LockOpen,
+    Pencil,
+    Search,
+    Trash2,
+    UserPlus,
+    X,
+} from 'lucide-vue-next';
+import { computed, reactive, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
 import Heading from '@/components/Heading.vue';
 import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { formatVnd } from '@/lib/vnd';
 
 type CreatorRef = {
@@ -25,8 +44,14 @@ type Row = {
     balance_vnd: number;
     role: string;
     event_count: number;
+    status: 'active' | 'locked';
+    status_label: string;
+    last_login_at: string | null;
+    last_login_ip: string | null;
     created_at: string | null;
     creator: CreatorRef;
+    can_view_password: boolean;
+    can_lock: boolean;
 };
 
 type Paginator = {
@@ -40,40 +65,72 @@ type Paginator = {
     links: PaginationLink[];
 };
 
+type ManagerOption = { id: number; name: string; username: string };
+
 const props = defineProps<{
     users: Paginator;
-    filters: { q: string; per_page: number };
+    filters: {
+        q: string;
+        role: string;
+        status: string;
+        manager_id: number | null;
+        per_page: number;
+    };
+    roleOptions: string[];
+    statusOptions: { value: string; label: string }[];
+    managerOptions: ManagerOption[];
 }>();
 
 const page = usePage();
 const currentUserId = computed(() => page.props.auth.user?.id as number | undefined);
 
 const search = ref<string>(props.filters.q ?? '');
+const roleFilter = ref<string>(props.filters.role ?? '');
+const statusFilter = ref<string>(props.filters.status ?? '');
+const managerFilter = ref<string>(
+    props.filters.manager_id !== null ? String(props.filters.manager_id) : '',
+);
+
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-watch(search, (next) => {
-    if (debounceTimer) {
-        clearTimeout(debounceTimer);
-    }
-    debounceTimer = setTimeout(() => {
-        const cleaned = next.trim();
-        const params: Record<string, string | number> = {};
-        if (cleaned !== '') params.q = cleaned;
-        if (props.filters.per_page && props.filters.per_page !== 15) {
-            params.per_page = props.filters.per_page;
-        }
-        router.get(UserController.index.url(), params, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            only: ['users', 'filters'],
-        });
-    }, 300);
+function pushFilters() {
+    const params: Record<string, string | number> = {};
+    const cleaned = search.value.trim();
+    if (cleaned !== '') params.q = cleaned;
+    if (roleFilter.value && roleFilter.value !== '__all') params.role = roleFilter.value;
+    if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
+    if (managerFilter.value && managerFilter.value !== '__all') params.manager_id = managerFilter.value;
+    if (props.filters.per_page && props.filters.per_page !== 15) params.per_page = props.filters.per_page;
+
+    router.get(UserController.index.url(), params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['users', 'filters'],
+    });
+}
+
+watch(search, () => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(pushFilters, 300);
 });
+
+watch([roleFilter, statusFilter, managerFilter], () => pushFilters());
 
 function clearSearch() {
     search.value = '';
 }
+
+function resetFilters() {
+    roleFilter.value = '';
+    statusFilter.value = '';
+    managerFilter.value = '';
+    search.value = '';
+}
+
+const hasFilters = computed(
+    () => !!(search.value || roleFilter.value || statusFilter.value || managerFilter.value),
+);
 
 function confirmDelete(name: string): boolean {
     return window.confirm(`Xóa người dùng "${name}"?\n\nHành động này không thể hoàn tác.`);
@@ -103,15 +160,55 @@ function roleClass(role: string): string {
     }
 }
 
+function statusClass(status: string): string {
+    return status === 'locked'
+        ? 'bg-stone-200 text-stone-700 dark:bg-stone-700/40 dark:text-stone-200'
+        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
+}
+
 function formatDate(iso: string | null): string {
-    if (!iso) {
-        return '—';
-    }
+    if (!iso) return '—';
     try {
         return new Date(iso).toLocaleString('vi-VN', { hour12: false });
     } catch {
         return iso;
     }
+}
+
+const passwordCache = reactive<Record<number, string | null>>({});
+const passwordLoading = reactive<Record<number, boolean>>({});
+const passwordVisible = reactive<Record<number, boolean>>({});
+
+async function togglePassword(row: Row) {
+    if (passwordVisible[row.id]) {
+        passwordVisible[row.id] = false;
+        return;
+    }
+    if (passwordCache[row.id] !== undefined) {
+        passwordVisible[row.id] = true;
+        return;
+    }
+    passwordLoading[row.id] = true;
+    try {
+        const res = await fetch(UserController.password.url({ user: row.id }), {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        });
+        if (!res.ok) {
+            passwordCache[row.id] = null;
+        } else {
+            const json = (await res.json()) as { password: string | null };
+            passwordCache[row.id] = json.password ?? null;
+        }
+        passwordVisible[row.id] = true;
+    } finally {
+        passwordLoading[row.id] = false;
+    }
+}
+
+function lockPrompt(row: Row): string | null {
+    if (row.status === 'locked') return null;
+    return window.prompt(`Lý do khóa tài khoản "${row.name}" (có thể bỏ trống):`, '') ?? '__cancel__';
 }
 
 defineOptions({
@@ -133,7 +230,7 @@ defineOptions({
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" title="Người dùng"
-                description="Quản lý tài khoản, tìm kiếm theo tên / email / số điện thoại / tên đăng nhập." />
+                description="Quản lý tài khoản, lọc theo vai trò / nhân viên quản lý / trạng thái." />
             <Button as-child>
                 <Link :href="UserController.create.url()">
                     <UserPlus class="size-4" />
@@ -142,47 +239,92 @@ defineOptions({
             </Button>
         </div>
 
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="relative w-full sm:max-w-sm">
-                <Search
-                    class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input v-model="search" type="search" placeholder="Tìm theo tên, tên đăng nhập, email, số điện thoại…"
-                    class="h-10 pl-9 pr-9" autocomplete="off" />
-                <button v-if="search !== ''" type="button"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Xóa tìm kiếm" @click="clearSearch">
-                    <X class="size-4" />
-                </button>
+        <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div class="relative">
+                    <Search
+                        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="search" type="search" placeholder="Tìm tên, đăng nhập, email, SĐT…"
+                        class="h-10 pl-9 pr-9" autocomplete="off" />
+                    <button v-if="search !== ''" type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Xóa tìm kiếm" @click="clearSearch">
+                        <X class="size-4" />
+                    </button>
+                </div>
+
+                <Select v-if="roleOptions.length" v-model="roleFilter">
+                    <SelectTrigger class="h-10 w-full">
+                        <SelectValue placeholder="Vai trò" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all">Tất cả vai trò</SelectItem>
+                        <SelectItem v-for="r in roleOptions" :key="r" :value="r">
+                            {{ roleLabel(r) }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-model="statusFilter">
+                    <SelectTrigger class="h-10 w-full">
+                        <SelectValue placeholder="Trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all">Tất cả trạng thái</SelectItem>
+                        <SelectItem v-for="s in statusOptions" :key="s.value" :value="s.value">
+                            {{ s.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-if="managerOptions.length" v-model="managerFilter">
+                    <SelectTrigger class="h-10 w-full">
+                        <SelectValue placeholder="Nhân viên quản lý" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all">Tất cả nhân viên</SelectItem>
+                        <SelectItem v-for="m in managerOptions" :key="m.id" :value="String(m.id)">
+                            {{ m.name }} (@{{ m.username }})
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-            <div class="text-xs text-muted-foreground">
-                Tổng
-                <span class="font-semibold text-foreground">{{ users.total }}</span>
-                người dùng
-                <span v-if="filters.q">
-                    khớp với "<span class="font-medium">{{ filters.q }}</span>"
+
+            <div class="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                <span>
+                    Tổng
+                    <span class="font-semibold text-foreground">{{ users.total }}</span> người dùng
                 </span>
+                <button v-if="hasFilters" type="button"
+                    class="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 font-medium text-foreground/80 transition hover:bg-muted dark:border-sidebar-border"
+                    @click="resetFilters">
+                    <X class="size-3.5" /> Xóa bộ lọc
+                </button>
             </div>
         </div>
 
         <div class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-5xl text-left text-sm">
+                <table class="w-full min-w-[1100px] text-left text-sm">
                     <thead
                         class="border-b border-border/60 bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground dark:border-sidebar-border">
                         <tr>
                             <th class="p-3 font-semibold">Người dùng</th>
+                            <th class="p-3 font-semibold">Mật khẩu</th>
                             <th class="p-3 font-semibold">Liên hệ</th>
-                            <th class="p-3 text-end font-semibold">Số dư</th>
                             <th class="p-3 font-semibold">Vai trò</th>
-                            <th class="p-3 font-semibold">Thời gian tạo</th>
-                            <th class="p-3 font-semibold">Nhân viên quản lý</th>
+                            <th class="p-3 font-semibold">Trạng thái</th>
+                            <th class="p-3 font-semibold">Đăng nhập cuối</th>
+                            <th class="p-3 font-semibold">Tạo lúc</th>
+                            <th class="p-3 font-semibold">NV quản lý</th>
+                            <th class="p-3 text-end font-semibold">Số dư</th>
                             <th class="p-3 text-center font-semibold">Sự kiện</th>
                             <th class="p-3 text-end font-semibold">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-if="users.data.length === 0">
-                            <td colspan="8" class="px-3 py-10 text-center text-sm text-muted-foreground">
+                            <td colspan="11" class="px-3 py-10 text-center text-sm text-muted-foreground">
                                 Không có người dùng phù hợp.
                             </td>
                         </tr>
@@ -191,30 +333,31 @@ defineOptions({
                             <td class="p-3">
                                 <div class="flex flex-col">
                                     <span class="font-medium text-foreground">{{ u.name }}</span>
-                                    <span class="font-mono text-[11px] text-muted-foreground">
-                                        @{{ u.username }}
-                                    </span>
+                                    <span class="font-mono text-[11px] text-muted-foreground">@{{ u.username }}</span>
                                 </div>
+                            </td>
+                            <td class="p-3">
+                                <div v-if="u.can_view_password" class="flex items-center gap-1.5">
+                                    <span class="font-mono text-xs">
+                                        {{ passwordVisible[u.id] && passwordCache[u.id] !== null
+                                            ? (passwordCache[u.id] ?? '—')
+                                            : '••••••••' }}
+                                    </span>
+                                    <button type="button"
+                                        class="inline-flex size-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition hover:bg-muted hover:text-foreground dark:border-sidebar-border"
+                                        :title="passwordVisible[u.id] ? 'Ẩn' : 'Hiện mật khẩu'"
+                                        :disabled="passwordLoading[u.id]" @click="togglePassword(u)">
+                                        <Eye v-if="!passwordVisible[u.id]" class="size-3.5" />
+                                        <EyeOff v-else class="size-3.5" />
+                                    </button>
+                                </div>
+                                <span v-else class="text-xs text-muted-foreground">—</span>
                             </td>
                             <td class="p-3">
                                 <div class="flex flex-col gap-0.5">
                                     <span class="text-foreground/90">{{ u.email }}</span>
-                                    <span class="font-mono text-[11px] text-muted-foreground">
-                                        {{ u.phone || '—' }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td class="p-3 text-end">
-                                <div class="flex items-center justify-end gap-2">
-                                    <span class="font-mono text-xs font-semibold">
-                                        {{ formatVnd(u.balance_vnd) }}
-                                    </span>
-                                    <Link :href="UserController.deposit.url({ user: u.id })"
-                                        class="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                                        title="Nạp / trừ tiền và xem lịch sử">
-                                        <Coins class="size-3" />
-                                        Nạp tiền
-                                    </Link>
+                                    <span class="font-mono text-[11px] text-muted-foreground">{{ u.phone || '—'
+                                    }}</span>
                                 </div>
                             </td>
 
@@ -224,17 +367,38 @@ defineOptions({
                                     {{ roleLabel(u.role) }}
                                 </span>
                             </td>
-                            <td class="p-3 text-xs text-muted-foreground">
-                                {{ formatDate(u.created_at) }}
+                            <td class="p-3">
+                                <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                    :class="statusClass(u.status)">
+                                    {{ u.status_label }}
+                                </span>
                             </td>
+                            <td class="p-3 text-xs text-muted-foreground">
+                                <div v-if="u.last_login_at" class="flex flex-col leading-tight">
+                                    <span>{{ formatDate(u.last_login_at) }}</span>
+                                    <span class="font-mono text-[10px]">{{ u.last_login_ip || '—' }}</span>
+                                </div>
+                                <span v-else>—</span>
+                            </td>
+                            <td class="p-3 text-xs text-muted-foreground">{{ formatDate(u.created_at) }}</td>
                             <td class="p-3 text-xs">
                                 <div v-if="u.creator" class="flex flex-col leading-tight">
                                     <span class="text-foreground">{{ u.creator.name }}</span>
-                                    <span class="font-mono text-[11px] text-muted-foreground">
-                                        @{{ u.creator.username }}
-                                    </span>
+                                    <span class="font-mono text-[11px] text-muted-foreground">@{{ u.creator.username
+                                    }}</span>
                                 </div>
                                 <span v-else class="italic text-muted-foreground">Tự đăng ký</span>
+                            </td>
+                            <td class="p-3 text-end">
+                                <div class="flex items-center justify-end gap-2">
+                                    <span class="font-mono text-xs font-semibold">{{ formatVnd(u.balance_vnd) }}</span>
+                                    <Link :href="UserController.deposit.url({ user: u.id })"
+                                        class="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                                        title="Nạp / trừ tiền">
+                                        <Coins class="size-3" />
+                                        Nạp
+                                    </Link>
+                                </div>
                             </td>
                             <td class="p-3 text-center">
                                 <Link :href="UserEventController.index.url({ user: u.id })"
@@ -246,23 +410,37 @@ defineOptions({
                             </td>
                             <td class="p-3 text-end">
                                 <div class="flex flex-wrap items-center justify-end gap-2">
-                                    <Button size="sm" variant="outline" as-child>
-                                        <Link :href="UserController.deposit.url({ user: u.id })">
-                                            <Coins class="size-3.5" />
-                                            Nạp tiền
-                                        </Link>
-                                    </Button>
                                     <Button variant="secondary" size="sm" as-child>
                                         <Link :href="UserController.edit.url({ user: u.id })">
                                             <Pencil class="size-3.5" />
                                             Sửa
                                         </Link>
                                     </Button>
+                                    <Form v-if="u.can_lock" v-bind="UserController.toggleLock.form({ user: u.id })"
+                                        @submit="(event: SubmitEvent) => {
+                                            if (u.status === 'active') {
+                                                const reason = lockPrompt(u);
+                                                if (reason === '__cancel__') {
+                                                    event.preventDefault();
+                                                    return;
+                                                }
+                                                const fd = (event.target as HTMLFormElement);
+                                                const input = fd.querySelector('input[name=reason]') as HTMLInputElement | null;
+                                                if (input && reason) input.value = reason;
+                                            }
+                                        }" #default="{ processing }">
+                                        <input type="hidden" name="reason" value="" />
+                                        <Button type="submit" size="sm"
+                                            :variant="u.status === 'locked' ? 'outline' : 'destructive'"
+                                            :disabled="processing">
+                                            <LockOpen v-if="u.status === 'locked'" class="size-3.5" />
+                                            <Lock v-else class="size-3.5" />
+                                            {{ u.status === 'locked' ? 'Mở khóa' : 'Khóa' }}
+                                        </Button>
+                                    </Form>
                                     <Form v-if="u.id !== currentUserId"
                                         v-bind="UserController.destroy.form({ user: u.id })" @submit="(event: SubmitEvent) => {
-                                            if (!confirmDelete(u.name)) {
-                                                event.preventDefault();
-                                            }
+                                            if (!confirmDelete(u.name)) event.preventDefault();
                                         }" #default="{ processing }">
                                         <Button type="submit" variant="destructive" size="sm" :disabled="processing">
                                             <Trash2 class="size-3.5" />

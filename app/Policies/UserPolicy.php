@@ -57,6 +57,34 @@ class UserPolicy
         }
 
         if ($user->hasRole('admin')) {
+            return ! $model->hasRole('admin') || $model->id !== $user->id;
+        }
+
+        if ($user->hasRole('staff')) {
+            if ($model->hasAnyRole(['admin', 'staff'])) {
+                return false;
+            }
+
+            return (int) $model->created_by === (int) $user->id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Lock or unlock another account. Self-locking is forbidden.
+     */
+    public function lock(User $user, User $model): bool
+    {
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        if ($model->hasRole('admin')) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
             return true;
         }
 
@@ -69,6 +97,15 @@ class UserPolicy
         }
 
         return false;
+    }
+
+    /**
+     * Reveal the encrypted plain-text password to admins/staff
+     * for the same set of users they are allowed to update.
+     */
+    public function viewPassword(User $user, User $model): bool
+    {
+        return $this->update($user, $model);
     }
 
     public function restore(User $user, User $model): bool

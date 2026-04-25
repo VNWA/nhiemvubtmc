@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Banknote, CalendarHeart, FolderGit2, LayoutGrid, Palette, Users } from 'lucide-vue-next';
+import { BookOpen, Banknote, CalendarHeart, FolderGit2, LayoutGrid, Palette, ScrollText, UserCog, Users } from 'lucide-vue-next';
+import ActivityLogController from '@/actions/App/Http/Controllers/Admin/ActivityLogController';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
+import StaffController from '@/actions/App/Http/Controllers/Admin/StaffController';
 import WithdrawalController from '@/actions/App/Http/Controllers/Admin/WithdrawalController';
 import { computed } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
@@ -55,6 +57,11 @@ const mainNavItems = computed((): NavItem[] => {
 
     if (isAdmin) {
         items.push({
+            title: 'Nhân viên',
+            href: StaffController.index.url(),
+            icon: UserCog,
+        });
+        items.push({
             title: 'Sự kiện (phòng)',
             href: EventRoomController.index.url(),
             icon: CalendarHeart,
@@ -63,6 +70,11 @@ const mainNavItems = computed((): NavItem[] => {
             title: 'Yêu cầu rút tiền',
             href: WithdrawalController.index.url(),
             icon: Banknote,
+        });
+        items.push({
+            title: 'Lịch sử thao tác',
+            href: ActivityLogController.index.url(),
+            icon: ScrollText,
         });
     }
 

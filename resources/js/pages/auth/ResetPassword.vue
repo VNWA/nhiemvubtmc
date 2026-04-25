@@ -2,17 +2,17 @@
 import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
-import PasswordInput from '@/components/PasswordInput.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
+import CButton from '@/components/client/CButton.vue';
+import CInput from '@/components/client/CInput.vue';
+import CLabel from '@/components/client/CLabel.vue';
+import CPasswordInput from '@/components/client/CPasswordInput.vue';
+import CSpinner from '@/components/client/CSpinner.vue';
 import { update } from '@/routes/password';
 
 defineOptions({
     layout: {
-        title: 'Reset password',
-        description: 'Please enter your new password below',
+        title: 'Đặt lại mật khẩu',
+        description: 'Nhập mật khẩu mới của bạn bên dưới.',
     },
 });
 
@@ -25,63 +25,74 @@ const inputEmail = ref(props.email);
 </script>
 
 <template>
-    <Head title="Reset password" />
+    <Head title="Đặt lại mật khẩu" />
 
     <Form
         v-bind="update.form()"
         :transform="(data) => ({ ...data, token, email })"
         :reset-on-success="['password', 'password_confirmation']"
         v-slot="{ errors, processing }"
+        class="reset-form"
     >
-        <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="email">Email</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    name="email"
-                    autocomplete="email"
-                    v-model="inputEmail"
-                    class="mt-1 block w-full"
-                    readonly
-                />
-                <InputError :message="errors.email" class="mt-2" />
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="password">Password</Label>
-                <PasswordInput
-                    id="password"
-                    name="password"
-                    autocomplete="new-password"
-                    class="mt-1 block w-full"
-                    autofocus
-                    placeholder="Password"
-                />
-                <InputError :message="errors.password" />
-            </div>
-
-            <div class="grid gap-2">
-                <Label for="password_confirmation"> Confirm password </Label>
-                <PasswordInput
-                    id="password_confirmation"
-                    name="password_confirmation"
-                    autocomplete="new-password"
-                    class="mt-1 block w-full"
-                    placeholder="Confirm password"
-                />
-                <InputError :message="errors.password_confirmation" />
-            </div>
-
-            <Button
-                type="submit"
-                class="mt-4 w-full"
-                :disabled="processing"
-                data-test="reset-password-button"
-            >
-                <Spinner v-if="processing" />
-                Reset password
-            </Button>
+        <div class="field">
+            <CLabel for="email">Email</CLabel>
+            <CInput
+                id="email"
+                type="email"
+                name="email"
+                autocomplete="email"
+                v-model="inputEmail"
+                readonly
+            />
+            <InputError :message="errors.email" />
         </div>
+
+        <div class="field">
+            <CLabel for="password" required>Mật khẩu mới</CLabel>
+            <CPasswordInput
+                id="password"
+                name="password"
+                autocomplete="new-password"
+                autofocus
+                placeholder="Mật khẩu"
+            />
+            <InputError :message="errors.password" />
+        </div>
+
+        <div class="field">
+            <CLabel for="password_confirmation" required>Xác nhận mật khẩu</CLabel>
+            <CPasswordInput
+                id="password_confirmation"
+                name="password_confirmation"
+                autocomplete="new-password"
+                placeholder="Nhập lại mật khẩu"
+            />
+            <InputError :message="errors.password_confirmation" />
+        </div>
+
+        <CButton
+            type="submit"
+            variant="primary"
+            size="lg"
+            block
+            :disabled="processing"
+            data-test="reset-password-button"
+        >
+            <CSpinner v-if="processing" />
+            Đặt lại mật khẩu
+        </CButton>
     </Form>
 </template>
+
+<style scoped>
+.reset-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.field {
+    display: grid;
+    gap: 0.5rem;
+}
+</style>

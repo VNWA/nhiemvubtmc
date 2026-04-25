@@ -18,7 +18,6 @@ class StartEventRoundRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'preset_option_id' => ['required', 'integer', 'exists:event_room_options,id'],
             'name' => ['nullable', 'string', 'max:120'],
             'duration_seconds' => [
                 'nullable',

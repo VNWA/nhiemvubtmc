@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('slug', 64)->unique();
             $table->string('avatar_path')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->unsignedInteger('viewer_offset')->default(0);
             $table->timestamps();
         });
 
@@ -35,7 +36,6 @@ return new class extends Migration
             $table->unsignedInteger('round_number');
             $table->string('name', 120)->default('');
             $table->string('status', 16);
-            $table->foreignId('preset_option_id')->constrained('event_room_options')->restrictOnDelete();
             $table->unsignedInteger('duration_seconds')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('auto_end_at')->nullable();
@@ -50,8 +50,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('event_round_id')->constrained('event_rounds')->cascadeOnDelete();
-            $table->foreignId('option_id')->constrained('event_room_options')->restrictOnDelete();
+            $table->json('selected_option_ids')->nullable();
             $table->unsignedBigInteger('amount_vnd');
+            $table->string('status', 20)->default('pending');
+            $table->unsignedBigInteger('refund_vnd')->default(0);
+            $table->unsignedBigInteger('commission_vnd')->default(0);
+            $table->foreignId('refund_wallet_tx_id')->nullable()->constrained('wallet_transactions')->nullOnDelete();
+            $table->foreignId('commission_wallet_tx_id')->nullable()->constrained('wallet_transactions')->nullOnDelete();
             $table->timestamps();
 
             $table->unique(['event_round_id', 'user_id']);

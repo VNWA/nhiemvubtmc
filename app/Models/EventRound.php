@@ -17,7 +17,6 @@ class EventRound extends Model
         'round_number',
         'name',
         'status',
-        'preset_option_id',
         'duration_seconds',
         'started_at',
         'auto_end_at',
@@ -44,14 +43,6 @@ class EventRound extends Model
     public function eventRoom(): BelongsTo
     {
         return $this->belongsTo(EventRoom::class, 'event_room_id');
-    }
-
-    /**
-     * @return BelongsTo<EventRoomOption, $this>
-     */
-    public function presetOption(): BelongsTo
-    {
-        return $this->belongsTo(EventRoomOption::class, 'preset_option_id');
     }
 
     /**

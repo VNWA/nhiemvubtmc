@@ -3,8 +3,8 @@ import AccountController from '@/actions/App/Http/Controllers/Client/AccountCont
 import WithdrawalController from '@/actions/App/Http/Controllers/Client/WithdrawalController';
 import CurrencyInput from '@/components/CurrencyInput.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import CButton from '@/components/client/CButton.vue';
+import CLabel from '@/components/client/CLabel.vue';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, Banknote, CheckCircle2, ChevronsRight, Hourglass, Landmark, Send, XCircle } from 'lucide-vue-next';
@@ -171,9 +171,9 @@ function statusChipClass(s: string): string {
         <form v-if="bankLinked" class="space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm"
             @submit.prevent="submit">
             <div class="space-y-1.5">
-                <Label for="amount_vnd" class="text-sm font-semibold text-stone-700">
+                <CLabel for="amount_vnd" required>
                     Số tiền muốn rút
-                </Label>
+                </CLabel>
                 <CurrencyInput id="amount_vnd" v-model="form.amount_vnd" :max="availableVnd"
                     :aria-invalid="!!form.errors.amount_vnd" placeholder="0" />
                 <InputError :message="form.errors.amount_vnd" />
@@ -190,24 +190,24 @@ function statusChipClass(s: string): string {
             </div>
 
             <div class="space-y-1.5">
-                <Label for="note" class="text-sm font-semibold text-stone-700">
+                <CLabel for="note">
                     Ghi chú (không bắt buộc)
-                </Label>
+                </CLabel>
                 <textarea id="note" v-model="form.note" rows="2" maxlength="500" placeholder="Ví dụ: Rút tiền thưởng…"
                     class="withdraw-textarea" :aria-invalid="!!form.errors.note || undefined"></textarea>
                 <InputError :message="form.errors.note" />
             </div>
 
             <div class="flex items-center gap-2 pt-1">
-                <Button type="button" variant="outline" class="flex-1"
+                <CButton type="button" variant="outline" block
                     :disabled="form.processing || form.amount_vnd === 0" @click="reset">
                     Đặt lại
-                </Button>
-                <Button type="submit" class="flex-[1.4] btn-gold"
+                </CButton>
+                <CButton type="submit" variant="gold" block
                     :disabled="form.processing || form.amount_vnd === 0 || availableVnd <= 0">
                     <Send class="size-4" />
                     Gửi yêu cầu
-                </Button>
+                </CButton>
             </div>
         </form>
 

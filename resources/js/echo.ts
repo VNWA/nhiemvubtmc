@@ -58,7 +58,6 @@ export type SukienRoundPayload = {
     eventRoomId: number;
     eventRoundId: number;
     roundNumber: number;
-    presetOption: { id: number; label: string; bg_color: string; text_color: string };
     autoEndAt?: string | null;
 };
 

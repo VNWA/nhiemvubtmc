@@ -2,7 +2,7 @@
 import AccountController from '@/actions/App/Http/Controllers/Client/AccountController';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link } from '@inertiajs/vue3';
-import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, ChevronDown, Gift, History, Wallet } from 'lucide-vue-next';
+import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, ChevronDown, Gift, History, Ticket, Wallet } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 type Tx = {
@@ -19,7 +19,7 @@ type Tx = {
 
 type Pagination = { page: number; perPage: number; total: number; hasMore: boolean };
 
-type Filter = 'all' | 'credit' | 'debit' | 'commission';
+type Filter = 'all' | 'credit' | 'debit' | 'commission' | 'bet_place';
 
 const props = defineProps<{
     balanceVnd: number;
@@ -40,8 +40,9 @@ const loadError = ref<string | null>(null);
 const FILTERS: Array<{ value: Filter; label: string }> = [
     { value: 'all', label: 'Tất cả' },
     { value: 'credit', label: 'Nạp tiền' },
-    { value: 'debit', label: 'Rút tiền' },
+    { value: 'bet_place', label: 'Phí tham gia' },
     { value: 'commission', label: 'Hoa hồng' },
+    { value: 'debit', label: 'Rút tiền' },
 ];
 
 const totalCredit = computed(() =>
@@ -50,10 +51,15 @@ const totalCredit = computed(() =>
         .reduce((s, t) => s + t.amount_vnd, 0),
 );
 const totalDebit = computed(() =>
-    items.value.filter((t) => t.direction === 'debit').reduce((s, t) => s + t.amount_vnd, 0),
+    items.value
+        .filter((t) => t.direction === 'debit' && t.source !== 'bet_place')
+        .reduce((s, t) => s + t.amount_vnd, 0),
 );
 const totalCommission = computed(() =>
     items.value.filter((t) => t.source === 'commission').reduce((s, t) => s + t.amount_vnd, 0),
+);
+const totalBetPlace = computed(() =>
+    items.value.filter((t) => t.source === 'bet_place').reduce((s, t) => s + t.amount_vnd, 0),
 );
 
 function txTitle(tx: Tx): string {
@@ -65,12 +71,14 @@ function txTitle(tx: Tx): string {
 
 function txIconClass(tx: Tx): string {
     if (tx.source === 'commission') return 'bg-fuchsia-100 text-fuchsia-700';
+    if (tx.source === 'bet_place') return 'bg-blue-100 text-blue-700';
     if (tx.direction === 'credit') return 'bg-emerald-100 text-emerald-700';
     return 'bg-rose-100 text-rose-700';
 }
 
 function txAmountClass(tx: Tx): string {
     if (tx.source === 'commission') return 'text-fuchsia-700';
+    if (tx.source === 'bet_place') return 'text-blue-700';
     if (tx.direction === 'credit') return 'text-emerald-700';
     return 'text-rose-700';
 }
@@ -145,19 +153,25 @@ function formatDateTime(iso: string | null): string {
                 <span class="ml-auto text-[11px] text-stone-500">{{ items.length }}/{{ total }}</span>
             </div>
 
-            <div class="mt-2 grid grid-cols-4 gap-1.5">
+            <div class="mt-2 grid grid-cols-5 gap-1.5">
                 <button v-for="f in FILTERS" :key="f.value" type="button" class="filter-chip"
                     :class="{ 'is-active': filter === f.value }" @click="setFilter(f.value)">
                     {{ f.label }}
                 </button>
             </div>
 
-            <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+            <div class="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-2 py-1.5 text-emerald-800">
                     <p class="flex items-center gap-1">
                         <ArrowUpCircle class="size-3" /> Nạp
                     </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(totalCredit) }}</p>
+                </div>
+                <div class="rounded-lg border border-blue-200 bg-blue-50/70 px-2 py-1.5 text-blue-800">
+                    <p class="flex items-center gap-1">
+                        <Ticket class="size-3" /> Phí sự kiện
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(totalBetPlace) }}</p>
                 </div>
                 <div class="rounded-lg border border-fuchsia-200 bg-fuchsia-50/70 px-2 py-1.5 text-fuchsia-800">
                     <p class="flex items-center gap-1">
@@ -180,6 +194,7 @@ function formatDateTime(iso: string | null): string {
                     <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full"
                         :class="txIconClass(tx)">
                         <Gift v-if="tx.source === 'commission'" class="size-4" />
+                        <Ticket v-else-if="tx.source === 'bet_place'" class="size-4" />
                         <ArrowUpCircle v-else-if="tx.direction === 'credit'" class="size-4" />
                         <ArrowDownCircle v-else class="size-4" />
                     </span>
@@ -192,9 +207,11 @@ function formatDateTime(iso: string | null): string {
                                 class="rounded border px-1.5 py-px text-[10px] font-semibold"
                                 :class="tx.source === 'commission'
                                     ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
-                                    : tx.direction === 'credit'
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                        : 'border-rose-200 bg-rose-50 text-rose-700'"
+                                    : tx.source === 'bet_place'
+                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                        : tx.direction === 'credit'
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : 'border-rose-200 bg-rose-50 text-rose-700'"
                             >
                                 {{ tx.source_label }}
                             </span>

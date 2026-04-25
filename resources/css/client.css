@@ -298,6 +298,249 @@
     border-color: var(--border-strong);
 }
 
+/* ---------- Inputs / labels / checkbox ---------- */
+
+.c-label {
+    display: inline-block;
+    color: var(--primary-1);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.c-label.is-required::after {
+    content: '*';
+    margin-left: 0.25rem;
+    color: var(--accent-red);
+}
+
+.c-input {
+    display: block;
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 0.875rem;
+    border: 1.5px solid var(--border);
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    color: var(--text-body);
+    font-size: 0.9375rem;
+    font-family: inherit;
+    line-height: 1.4;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    outline: none;
+}
+
+.c-input::placeholder {
+    color: #94a3b8;
+}
+
+.c-input:hover:not(:disabled):not([readonly]) {
+    border-color: rgba(13, 79, 158, 0.35);
+}
+
+.c-input:focus,
+.c-input:focus-visible {
+    border-color: var(--primary-1);
+    box-shadow: 0 0 0 3px rgba(13, 79, 158, 0.16);
+    background-color: #ffffff;
+}
+
+.c-input[aria-invalid='true'] {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.14);
+}
+
+.c-input:disabled {
+    background-color: #f8fafc;
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.c-input[readonly] {
+    background-color: #f1f5f9;
+    color: var(--text-muted);
+}
+
+.c-input:-webkit-autofill,
+.c-input:-webkit-autofill:hover,
+.c-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text-body);
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+    caret-color: var(--text-body);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Compact size variant — used inside listings, chips, etc. */
+.c-input.c-input-sm {
+    height: 2.25rem;
+    font-size: 0.875rem;
+    padding: 0 0.625rem;
+}
+
+/* Trailing-icon padding (e.g. password eye) */
+.c-input.has-trailing {
+    padding-right: 2.5rem;
+}
+
+.c-password-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.c-password-eye {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-1);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.c-password-eye:hover {
+    color: var(--primary-1-hover);
+}
+
+.c-password-eye:focus-visible {
+    outline: 2px solid var(--primary-1);
+    outline-offset: -3px;
+    border-radius: 0.5rem;
+}
+
+.c-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 0.3125rem;
+    background-color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+    flex-shrink: 0;
+}
+
+.c-checkbox:hover:not(:disabled) {
+    border-color: var(--primary-1);
+}
+
+.c-checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(13, 79, 158, 0.18);
+}
+
+.c-checkbox:checked {
+    background-color: var(--primary-1);
+    border-color: var(--primary-1);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 14px;
+}
+
+.c-checkbox:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Native select — keep look consistent with .c-input. */
+.c-select {
+    display: block;
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 2.25rem 0 0.875rem;
+    border: 1.5px solid var(--border);
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    color: var(--text-body);
+    font-size: 0.9375rem;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%230d4f9e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.125rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    outline: none;
+    cursor: pointer;
+}
+
+.c-select:hover:not(:disabled) {
+    border-color: rgba(13, 79, 158, 0.35);
+}
+
+.c-select:focus {
+    border-color: var(--primary-1);
+    box-shadow: 0 0 0 3px rgba(13, 79, 158, 0.16);
+}
+
+.c-select:disabled {
+    background-color: #f8fafc;
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.c-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: c-spin 0.7s linear infinite;
+}
+
+@keyframes c-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------- Button extras ---------- */
+
+.btn-sm {
+    height: 2.125rem;
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+}
+
+.btn-lg {
+    height: 3rem;
+    padding: 0 1.25rem;
+    font-size: 1rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-link {
+    background: transparent;
+    color: var(--primary-1);
+    border-color: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0;
+    height: auto;
+}
+
+.btn-link:hover:not(:disabled) {
+    color: var(--primary-1-hover);
+}
+
 /* ---------- Small helper chips ---------- */
 
 .chip {

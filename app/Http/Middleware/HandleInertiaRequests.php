@@ -43,6 +43,7 @@ class HandleInertiaRequests extends Middleware
                 'isAdmin' => $request->user()?->hasRole('admin') ?? false,
                 'isStaff' => $request->user()?->hasRole('staff') ?? false,
                 'canManageUsers' => $request->user()?->hasAnyRole(['admin', 'staff']) ?? false,
+                'canManageStaff' => $request->user()?->hasRole('admin') ?? false,
                 'role' => $request->user()?->roles->first()?->name,
                 'balanceVnd' => (int) ($request->user()?->balance_vnd ?? 0),
             ],

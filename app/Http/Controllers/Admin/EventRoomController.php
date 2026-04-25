@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\EventRoundService;
 use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -109,34 +110,42 @@ class EventRoomController extends Controller
             $rounds->autoEndRound($openRound);
             $openRound = null;
         }
-        if ($openRound !== null) {
-            $openRound->load('presetOption');
-        }
 
         $perOption = [];
         $betsCount = 0;
         $totalAmountVnd = 0;
         if ($openRound !== null) {
-            $rows = EventBet::query()
+            $bets = EventBet::query()
                 ->where('event_round_id', $openRound->getKey())
-                ->selectRaw('option_id, count(*) as c, coalesce(sum(amount_vnd),0) as t')
-                ->groupBy('option_id')
-                ->get();
-            foreach ($rows as $row) {
-                $perOption[] = [
-                    'optionId' => (int) $row->option_id,
-                    'betsCount' => (int) $row->c,
-                    'totalAmountVnd' => (int) $row->t,
-                ];
-                $betsCount += (int) $row->c;
-                $totalAmountVnd += (int) $row->t;
+                ->get(['id', 'amount_vnd', 'selected_option_ids']);
+
+            $betsCount = $bets->count();
+            $totalAmountVnd = (int) $bets->sum('amount_vnd');
+
+            // Per-option fanout: count each ticket once for every option it
+            // covers; "totalAmount" reflects the full ticket amount each time.
+            /** @var array<int, array{optionId: int, betsCount: int, totalAmountVnd: int}> $agg */
+            $agg = [];
+            foreach ($bets as $bet) {
+                /** @var list<int> $ids */
+                $ids = array_values(array_unique(array_filter(array_map(
+                    static fn ($v): int => (int) $v,
+                    (array) ($bet->selected_option_ids ?? []),
+                ), static fn (int $v): bool => $v > 0)));
+                foreach ($ids as $id) {
+                    if (! isset($agg[$id])) {
+                        $agg[$id] = ['optionId' => $id, 'betsCount' => 0, 'totalAmountVnd' => 0];
+                    }
+                    $agg[$id]['betsCount']++;
+                    $agg[$id]['totalAmountVnd'] += (int) $bet->amount_vnd;
+                }
             }
+            $perOption = array_values($agg);
         }
 
         $recentRounds = EventRound::query()
             ->where('event_room_id', $eventRoom->getKey())
             ->where('status', EventRoundStatus::Closed)
-            ->with('presetOption')
             ->orderByDesc('round_number')
             ->limit(20)
             ->get()
@@ -145,11 +154,6 @@ class EventRoomController extends Controller
                 'round_number' => (int) $r->round_number,
                 'name' => $r->name,
                 'ended_at' => $r->ended_at?->toIso8601String(),
-                'preset' => [
-                    'label' => $r->presetOption->label,
-                    'bg_color' => $r->presetOption->bg_color,
-                    'text_color' => $r->presetOption->text_color,
-                ],
             ]);
 
         return Inertia::render('admin/sukien-rooms/Manage', [
@@ -176,12 +180,6 @@ class EventRoomController extends Controller
                 'duration_seconds' => $openRound->duration_seconds === null
                     ? null
                     : (int) $openRound->duration_seconds,
-                'preset' => $openRound->presetOption === null ? null : [
-                    'id' => (int) $openRound->presetOption->getKey(),
-                    'label' => $openRound->presetOption->label,
-                    'bg_color' => $openRound->presetOption->bg_color,
-                    'text_color' => $openRound->presetOption->text_color,
-                ],
             ],
             'betsStats' => [
                 'betsCount' => $betsCount,
@@ -223,6 +221,19 @@ class EventRoomController extends Controller
             ->with('success', 'Đã cập nhật phòng.');
     }
 
+    public function updateViewerOffset(Request $request, EventRoom $eventRoom): RedirectResponse
+    {
+        $validated = $request->validate([
+            'viewer_offset' => ['required', 'integer', 'min:0', 'max:999999'],
+        ]);
+
+        $eventRoom->update([
+            'viewer_offset' => (int) $validated['viewer_offset'],
+        ]);
+
+        return back()->with('success', 'Đã cập nhật số người xem bù.');
+    }
+
     public function destroy(EventRoom $eventRoom): RedirectResponse
     {
         DB::transaction(function () use ($eventRoom) {
@@ -239,7 +250,6 @@ class EventRoomController extends Controller
                 /** @var Collection<int, EventBet> $bets */
                 $bets = EventBet::query()
                     ->where('event_round_id', $round->getKey())
-                    ->with('option')
                     ->lockForUpdate()
                     ->get();
 
@@ -251,7 +261,7 @@ class EventRoomController extends Controller
                         ->firstOrFail();
 
                     $amount = (int) $bet->amount_vnd;
-                    $optionLabel = $bet->option?->label;
+                    $optionLabels = $bet->selectedOptionLabels();
                     $betId = (int) $bet->getKey();
 
                     $bet->delete();
@@ -261,13 +271,13 @@ class EventRoomController extends Controller
                         WalletDirection::Credit,
                         WalletSource::BetCancel,
                         $amount,
-                        'Hoàn cược do xóa phòng "'.$eventRoom->name.'" (kỳ #'.$round->round_number.')',
+                        'Hoàn cược do xóa phòng "'.$eventRoom->name.'" (phiên #'.$round->round_number.')',
                         [
                             'event_room_id' => (int) $roomId,
                             'event_room_name' => $eventRoom->name,
                             'event_round_id' => (int) $round->getKey(),
                             'round_number' => (int) $round->round_number,
-                            'option_label' => $optionLabel,
+                            'option_labels' => $optionLabels,
                             'bet_id' => $betId,
                             'reason' => 'room_deleted',
                         ],

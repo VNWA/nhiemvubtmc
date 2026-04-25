@@ -14,7 +14,7 @@ type Bet = {
     status: 'pending' | 'completed';
     status_label: string;
     created_at: string | null;
-    option_label: string | null;
+    option_labels: string[];
     round_name: string | null;
     round_number: number;
     room_name: string | null;
@@ -83,7 +83,7 @@ function formatSigned(amount: number): string {
                         </p>
                         <p class="mt-0.5 flex items-center gap-1 text-xs text-stone-600">
                             <span aria-hidden="true">📌</span>
-                            <span class="truncate">Nhiệm vụ: {{ bet.round_name ?? bet.option_label ?? '—' }}</span>
+                            <span class="truncate">Nhiệm vụ: {{ bet.round_name ?? '—' }}</span>
                         </p>
                     </div>
                     <span class="status-pill" :class="bet.status === 'completed' ? 'status-done' : 'status-pending'">
@@ -95,8 +95,8 @@ function formatSigned(amount: number): string {
                     <span class="inline-flex items-center gap-1">
                         <span aria-hidden="true">🕒</span> Phiên #{{ bet.id }}
                     </span>
-                    <span v-if="bet.option_label">· Đáp án: <span class="font-medium text-stone-700">{{
-                        bet.option_label }}</span></span>
+                    <span v-if="bet.option_labels.length">· Mục: <span class="font-medium text-stone-700">{{
+                        bet.option_labels.join(', ') }}</span></span>
                 </div>
 
                 <ul class="mt-3 grid grid-cols-1 gap-1.5 text-sm">

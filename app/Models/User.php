@@ -3,19 +3,41 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
+use Throwable;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'username', 'balance_vnd', 'bank_name', 'bank_account_number', 'bank_account_name', 'created_by'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Fillable([
+    'name',
+    'email',
+    'phone',
+    'password',
+    'password_hint',
+    'username',
+    'balance_vnd',
+    'bank_name',
+    'bank_account_number',
+    'bank_account_name',
+    'created_by',
+    'status',
+    'locked_at',
+    'locked_by',
+    'lock_reason',
+    'last_login_at',
+    'last_login_ip',
+])]
+#[Hidden(['password', 'password_hint', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -32,6 +54,16 @@ class User extends Authenticatable
     }
 
     /**
+     * The actor that locked this user, if any.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function locker(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'locked_by');
+    }
+
+    /**
      * Bets placed by the user across events / rounds.
      *
      * @return HasMany<EventBet, $this>
@@ -39,6 +71,48 @@ class User extends Authenticatable
     public function eventBets(): HasMany
     {
         return $this->hasMany(EventBet::class, 'user_id');
+    }
+
+    /**
+     * Customers / users that this admin/staff has created.
+     *
+     * @return HasMany<User, $this>
+     */
+    public function managedUsers(): HasMany
+    {
+        return $this->hasMany(self::class, 'created_by');
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->status === UserStatus::Locked;
+    }
+
+    /**
+     * Plain password kept encrypted at rest so admins/staff can reveal it.
+     */
+    protected function passwordHint(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (empty($value)) {
+                    return null;
+                }
+
+                try {
+                    return Crypt::decryptString($value);
+                } catch (Throwable) {
+                    return null;
+                }
+            },
+            set: function ($value) {
+                if ($value === null || $value === '') {
+                    return ['password_hint' => null];
+                }
+
+                return ['password_hint' => Crypt::encryptString((string) $value)];
+            },
+        );
     }
 
     /**
@@ -53,6 +127,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'balance_vnd' => 'integer',
+            'status' => UserStatus::class,
+            'locked_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 }

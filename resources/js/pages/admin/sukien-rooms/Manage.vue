@@ -7,13 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     echo,
     joinSukienPresence,
     subscribeSukienPublicChannel,
@@ -24,7 +17,7 @@ import {
 } from '@/echo';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ExternalLink, Pencil, Power, PowerOff, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
+import { Check, ExternalLink, Pencil, Power, PowerOff, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 type Opt = { id: number; label: string; bg_color: string; text_color: string };
@@ -35,14 +28,12 @@ type OpenRoundT = {
     started_at: string | null;
     auto_end_at: string | null;
     duration_seconds: number | null;
-    preset: { id: number; label: string; bg_color: string; text_color: string } | null;
 };
 type RoundHistory = {
     id: number;
     round_number: number;
     name: string;
     ended_at: string | null;
-    preset: { label: string; bg_color: string; text_color: string };
 };
 
 const props = defineProps<{
@@ -78,6 +69,22 @@ const presenceCount = ref(0);
 const presenceNames = ref<string[]>([]);
 const rtConnected = ref(!!echo);
 const now = ref(Date.now());
+
+const viewerOffsetForm = useForm<{ viewer_offset: number }>({
+    viewer_offset: props.eventRoom.viewer_offset ?? 0,
+});
+
+function submitViewerOffset() {
+    viewerOffsetForm
+        .transform((data) => ({
+            viewer_offset: Math.max(0, Math.min(999999, Math.round(Number(data.viewer_offset) || 0))),
+        }))
+        .patch(EventRoomController.updateViewerOffset.url({ event_room: props.eventRoom.id }), {
+            preserveScroll: true,
+            preserveState: true,
+            only: ['eventRoom'],
+        });
+}
 
 let unsubPublic: (() => void) | null = null;
 let unsubPresence: (() => void) | null = null;
@@ -175,11 +182,10 @@ onMounted(() => {
             liveOpenRound.value = {
                 id: p.eventRoundId,
                 round_number: p.roundNumber,
-                name: `Kỳ #${p.roundNumber}`,
+                name: `Phiên #${p.roundNumber}`,
                 started_at: new Date().toISOString(),
                 auto_end_at: p.autoEndAt ?? null,
                 duration_seconds: null,
-                preset: p.presetOption,
             };
             liveBetsCount.value = 0;
             liveTotalVnd.value = 0;
@@ -244,21 +250,21 @@ watch(
     { deep: true },
 );
 
+watch(
+    () => props.eventRoom.viewer_offset,
+    (next) => {
+        viewerOffsetForm.viewer_offset = next ?? 0;
+        viewerOffsetForm.defaults({ viewer_offset: next ?? 0 });
+    },
+);
+
 const QUICK_MINUTES = [1, 2, 5, 10, 30];
 const minMinutes = Math.max(1, Math.ceil(props.durationLimits.minSeconds / 60));
 const maxMinutes = Math.max(minMinutes, Math.floor(props.durationLimits.maxSeconds / 60));
 
-const startForm = useForm({
-    preset_option_id: props.options[0]?.id ?? 0,
-    name: '' as string,
+const startForm = useForm<{ name: string; duration_minutes: number; duration_seconds?: number }>({
+    name: '',
     duration_minutes: 2,
-});
-
-const presetOptionModel = computed<string>({
-    get: () => (startForm.preset_option_id ? String(startForm.preset_option_id) : ''),
-    set: (v) => {
-        startForm.preset_option_id = v ? Number(v) : 0;
-    },
 });
 
 function setDurationMinutes(m: number) {
@@ -267,9 +273,6 @@ function setDurationMinutes(m: number) {
 }
 
 function submitStart() {
-    if (!startForm.preset_option_id) {
-        return;
-    }
     startForm
         .transform((data) => {
             const minutes = Math.max(
@@ -277,7 +280,6 @@ function submitStart() {
                 Math.min(maxMinutes, Math.round(Number(data.duration_minutes) || 0)),
             );
             return {
-                preset_option_id: data.preset_option_id,
                 name: data.name,
                 duration_seconds: minutes * 60,
             };
@@ -296,7 +298,7 @@ function submitEnd() {
     if (!liveOpenRound.value) {
         return;
     }
-    if (!confirm('Kết thúc kỳ này ngay?')) {
+    if (!confirm('Kết thúc phiên này ngay?')) {
         return;
     }
     endForm.post(
@@ -354,7 +356,7 @@ function submitEnd() {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl border bg-card p-3">
                 <p class="text-xs text-muted-foreground">Người đang xem (hiển thị)</p>
                 <p class="mt-1 flex items-center gap-1 text-2xl font-bold">
@@ -377,11 +379,40 @@ function submitEnd() {
                 </p>
             </div>
             <div class="rounded-xl border bg-card p-3">
-                <p class="text-xs text-muted-foreground">Tổng lượt đặt kỳ này</p>
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs text-muted-foreground">Số người ảo (bù vào hiển thị)</p>
+                    <span v-if="viewerOffsetForm.recentlySuccessful"
+                        class="inline-flex items-center gap-1 text-xs text-emerald-700">
+                        <Check class="size-3.5" /> Đã lưu
+                    </span>
+                </div>
+                <form class="mt-1 flex items-center gap-2" @submit.prevent="submitViewerOffset">
+                    <Input
+                        v-model.number="viewerOffsetForm.viewer_offset"
+                        type="number"
+                        min="0"
+                        max="999999"
+                        class="h-9 max-w-[140px] font-mono text-lg font-semibold"
+                    />
+                    <Button type="submit" size="sm" variant="secondary"
+                        :disabled="viewerOffsetForm.processing || !viewerOffsetForm.isDirty">
+                        {{ viewerOffsetForm.processing ? 'Đang lưu…' : 'Lưu' }}
+                    </Button>
+                </form>
+                <p v-if="viewerOffsetForm.errors.viewer_offset"
+                    class="mt-1 text-xs text-red-600">
+                    {{ viewerOffsetForm.errors.viewer_offset }}
+                </p>
+                <p v-else class="mt-1 text-xs text-muted-foreground">
+                    Cộng thêm vào số người xem hiển thị cho user.
+                </p>
+            </div>
+            <div class="rounded-xl border bg-card p-3">
+                <p class="text-xs text-muted-foreground">Tổng lượt đặt phiên này</p>
                 <p class="mt-1 text-2xl font-bold">{{ liveBetsCount }}</p>
             </div>
             <div class="rounded-xl border bg-card p-3">
-                <p class="text-xs text-muted-foreground">Tổng tiền cược kỳ này</p>
+                <p class="text-xs text-muted-foreground">Tổng tiền cược phiên này</p>
                 <p class="mt-1 font-mono text-2xl font-bold text-amber-800">
                     {{ formatVnd(liveTotalVnd) }}
                 </p>
@@ -392,7 +423,7 @@ function submitEnd() {
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wide text-amber-900/80">
-                        Kỳ đang mở
+                        Phiên đang mở
                     </p>
                     <p class="text-2xl font-bold text-amber-950">
                         #{{ liveOpenRound.round_number }}
@@ -412,16 +443,6 @@ function submitEnd() {
                     class="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
                     <Timer class="size-4" /> Không giới hạn
                 </div>
-            </div>
-
-            <div v-if="liveOpenRound.preset" class="mt-3 flex items-center gap-2 text-sm">
-                <span class="text-stone-700">Kết quả định sẵn:</span>
-                <span class="inline-flex items-center rounded px-2 py-0.5 text-sm font-semibold shadow" :style="{
-                    backgroundColor: liveOpenRound.preset.bg_color,
-                    color: liveOpenRound.preset.text_color,
-                }">
-                    {{ liveOpenRound.preset.label }}
-                </span>
             </div>
 
             <div class="mt-4">
@@ -455,83 +476,56 @@ function submitEnd() {
 
             <Button class="mt-4 w-full bg-stone-800 text-white hover:bg-stone-900" :disabled="endForm.processing"
                 @click="submitEnd">
-                {{ endForm.processing ? 'Đang gửi…' : 'Kết thúc kỳ này ngay' }}
+                {{ endForm.processing ? 'Đang gửi…' : 'Kết thúc phiên này ngay' }}
             </Button>
         </section>
 
         <section v-else class="rounded-2xl border bg-card p-4">
-            <h3 class="text-sm font-semibold text-stone-800">Bắt đầu kỳ mới</h3>
+            <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
-                Chọn kết quả định sẵn và thời lượng (phút). Khi hết giờ, kỳ sẽ tự động kết thúc.
+                Đặt tên phiên (tuỳ chọn) và thời lượng (phút). Khi hết giờ, phiên sẽ tự động kết thúc.
             </p>
 
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
                 <div>
-                    <Label for="preset">Kết quả định sẵn</Label>
-                    <Select v-model="presetOptionModel">
-                        <SelectTrigger id="preset" class="mt-1 w-full">
-                            <SelectValue placeholder="Chọn kết quả định sẵn" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem v-for="o in options" :key="o.id" :value="String(o.id)">
-                                <span class="inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold"
-                                    :style="{ backgroundColor: o.bg_color, color: o.text_color }">
-                                    {{ o.label }}
-                                </span>
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p v-if="startForm.errors.preset_option_id" class="mt-1 text-xs text-red-600">
-                        {{ startForm.errors.preset_option_id }}
-                    </p>
+                    <Label for="kname">Tên phiên (tuỳ chọn)</Label>
+                    <Input id="kname" v-model="startForm.name" class="mt-1" placeholder="VD: Vòng 1 tối nay" />
                 </div>
 
                 <div>
-                    <Label for="kname">Tên kỳ (tuỳ chọn)</Label>
-                    <Input id="kname" v-model="startForm.name" class="mt-1" placeholder="VD: Vòng 1 tối nay" />
+                    <Label for="duration">Thời lượng (phút) — {{ minMinutes }}–{{ maxMinutes }}</Label>
+                    <Input id="duration" v-model.number="startForm.duration_minutes" type="number" :min="minMinutes"
+                        :max="maxMinutes" class="mt-1" />
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                        <button v-for="m in QUICK_MINUTES" :key="m" type="button"
+                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs" :class="startForm.duration_minutes === m
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-stone-50 text-black'" @click="setDurationMinutes(m)">
+                            {{ m }} phút
+                        </button>
+                    </div>
+                    <p v-if="startForm.errors.duration_seconds" class="mt-1 text-xs text-red-600">
+                        {{ startForm.errors.duration_seconds }}
+                    </p>
                 </div>
-            </div>
-
-            <div class="mt-3">
-                <Label for="duration">Thời lượng (phút) — {{ minMinutes }}–{{ maxMinutes }}</Label>
-                <Input id="duration" v-model.number="startForm.duration_minutes" type="number" :min="minMinutes"
-                    :max="maxMinutes" class="mt-1 max-w-[180px]" />
-                <div class="mt-2 flex flex-wrap gap-1.5 ">
-                    <button v-for="m in QUICK_MINUTES" :key="m" type="button"
-                        class="rounded-md border border-stone-200  px-2 py-0.5 text-xs " :class="startForm.duration_minutes === m
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-stone-50 text-black'
-                            " @click="setDurationMinutes(m)">
-                        {{ m }} phút
-                    </button>
-                </div>
-                <p v-if="startForm.errors.duration_seconds" class="mt-1 text-xs text-red-600">
-                    {{ startForm.errors.duration_seconds }}
-                </p>
             </div>
 
             <Button class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
-                :disabled="!startForm.preset_option_id || startForm.processing" @click="submitStart">
-                {{ startForm.processing ? 'Đang mở…' : 'Mở kỳ mới' }}
+                :disabled="startForm.processing" @click="submitStart">
+                {{ startForm.processing ? 'Đang mở…' : 'Mở phiên mới' }}
             </Button>
         </section>
 
         <section class="rounded-2xl border bg-card p-3">
-            <h3 class="mb-2 text-sm font-semibold text-stone-800">Các kỳ đã kết thúc gần đây</h3>
+            <h3 class="mb-2 text-sm font-semibold text-stone-800">Các phiên đã kết thúc gần đây</h3>
             <ul v-if="recentRounds.length" class="max-h-72 space-y-1 overflow-y-auto pr-1 text-sm">
                 <li v-for="h in recentRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
-                    <span class="text-stone-700">Kỳ #{{ h.round_number }} <span class="text-xs text-stone-500">— {{
-                        h.name }}</span></span>
-                    <span class="rounded px-1.5 py-0.5 text-xs font-medium" :style="{
-                        backgroundColor: h.preset.bg_color,
-                        color: h.preset.text_color,
-                    }">
-                        {{ h.preset.label }}
-                    </span>
+                    <span class="text-stone-700">Phiên #{{ h.round_number }}</span>
+                    <span class="text-xs text-stone-500">{{ h.name }}</span>
                 </li>
             </ul>
-            <p v-else class="text-sm text-muted-foreground">Chưa có kỳ nào kết thúc.</p>
+            <p v-else class="text-sm text-muted-foreground">Chưa có phiên nào kết thúc.</p>
         </section>
     </div>
 </template>

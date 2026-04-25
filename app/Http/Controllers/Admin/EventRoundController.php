@@ -18,19 +18,18 @@ class EventRoundController extends Controller
         if ($user === null) {
             abort(403);
         }
-        $preset = (int) $request->validated('preset_option_id');
         $name = $request->validated('name');
         $durationSeconds = $request->filled('duration_seconds')
             ? (int) $request->validated('duration_seconds')
             : null;
 
         try {
-            $rounds->startRound($eventRoom, $preset, $user, $name, $durationSeconds);
+            $rounds->startRound($eventRoom, $user, $name, $durationSeconds);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('success', 'Đã bắt đầu kỳ mới.');
+        return back()->with('success', 'Đã bắt đầu phiên mới.');
     }
 
     public function end(EventRoom $eventRoom, EventRound $round, EventRoundService $rounds): RedirectResponse
@@ -49,6 +48,6 @@ class EventRoundController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('success', 'Đã kết thúc kỳ.');
+        return back()->with('success', 'Đã kết thúc phiên.');
     }
 }

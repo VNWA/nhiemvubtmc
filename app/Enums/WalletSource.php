@@ -18,7 +18,7 @@ enum WalletSource: string
             self::AdminCredit => 'Nạp tiền',
             self::AdminDebit => 'Trừ tiền',
             self::Commission => 'Thưởng hoa hồng',
-            self::BetPlace => 'Đặt cược',
+            self::BetPlace => 'Phí tham gia sự kiện',
             self::BetCancel => 'Huỷ cược (hoàn tiền)',
             self::EventRefund => 'Hoàn trả sự kiện',
             self::Withdrawal => 'Rút tiền đã duyệt',

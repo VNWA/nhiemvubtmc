@@ -55,23 +55,29 @@ class SukienEventRoomController extends Controller
             if ($openRound->auto_end_at !== null && $openRound->auto_end_at->isPast()) {
                 $this->rounds->autoEndRound($openRound);
                 $openRound = null;
-            } else {
-                $openRound->load('presetOption');
             }
         }
 
         $user = $request->user();
         $userBet = null;
         if ($user !== null && $openRound !== null) {
+            /** @var EventBet|null $bet */
             $bet = EventBet::query()
                 ->where('event_round_id', $openRound->getKey())
                 ->where('user_id', $user->getKey())
-                ->with('option')
                 ->first();
             if ($bet !== null) {
+                $optionIds = collect($bet->selected_option_ids ?? [])
+                    ->map(fn ($v) => (int) $v)
+                    ->values()
+                    ->all();
+                $labels = $bet->selectedOptionLabels(
+                    $room->options->keyBy('id')
+                );
                 $userBet = [
-                    'option_id' => (int) $bet->option_id,
-                    'option_label' => $bet->option->label,
+                    'id' => (int) $bet->getKey(),
+                    'option_ids' => $optionIds,
+                    'option_labels' => $labels,
                     'amount_vnd' => (int) $bet->amount_vnd,
                 ];
             }
@@ -83,7 +89,6 @@ class SukienEventRoomController extends Controller
 
         $recentRoundsTotal = (clone $closedQuery)->count();
         $recentRounds = (clone $closedQuery)
-            ->with('presetOption')
             ->orderByDesc('round_number')
             ->limit(self::ROUNDS_PER_PAGE)
             ->get()
@@ -122,12 +127,6 @@ class SukienEventRoomController extends Controller
                 'duration_seconds' => $openRound->duration_seconds === null
                     ? null
                     : (int) $openRound->duration_seconds,
-                'preset' => $openRound->presetOption === null ? null : [
-                    'id' => (int) $openRound->presetOption->getKey(),
-                    'label' => $openRound->presetOption->label,
-                    'bg_color' => $openRound->presetOption->bg_color,
-                    'text_color' => $openRound->presetOption->text_color,
-                ],
             ],
             'recentRounds' => $recentRounds,
             'recentRoundsTotal' => $recentRoundsTotal,
@@ -153,7 +152,6 @@ class SukienEventRoomController extends Controller
         $total = (clone $base)->count();
 
         $items = (clone $base)
-            ->with('presetOption')
             ->orderByDesc('round_number')
             ->forPage($page, $perPage)
             ->get();
@@ -168,7 +166,7 @@ class SukienEventRoomController extends Controller
     }
 
     /**
-     * @return array{id: int, round_number: int, name: string, ended_at: ?string, preset: array{label: string, bg_color: string, text_color: string}}
+     * @return array{id: int, round_number: int, name: string, ended_at: ?string}
      */
     private function formatRound(EventRound $round): array
     {
@@ -177,11 +175,6 @@ class SukienEventRoomController extends Controller
             'round_number' => (int) $round->round_number,
             'name' => $round->name,
             'ended_at' => $round->ended_at?->toIso8601String(),
-            'preset' => [
-                'label' => $round->presetOption->label,
-                'bg_color' => $round->presetOption->bg_color,
-                'text_color' => $round->presetOption->text_color,
-            ],
         ];
     }
 

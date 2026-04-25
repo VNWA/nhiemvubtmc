@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\EventBetStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 
 class EventBet extends Model
 {
@@ -14,11 +15,13 @@ class EventBet extends Model
     protected $fillable = [
         'user_id',
         'event_round_id',
-        'option_id',
+        'selected_option_ids',
         'amount_vnd',
         'status',
         'refund_vnd',
         'commission_vnd',
+        'refund_wallet_tx_id',
+        'commission_wallet_tx_id',
     ];
 
     /**
@@ -31,6 +34,7 @@ class EventBet extends Model
             'amount_vnd' => 'integer',
             'refund_vnd' => 'integer',
             'commission_vnd' => 'integer',
+            'selected_option_ids' => 'array',
         ];
     }
 
@@ -51,10 +55,32 @@ class EventBet extends Model
     }
 
     /**
-     * @return BelongsTo<EventRoomOption, $this>
+     * Resolve the labels for every option this bet covers, using either an
+     * options collection injected by the caller or a fresh DB query.
+     *
+     * @param  Collection<int, EventRoomOption>|null  $options
+     * @return list<string>
      */
-    public function option(): BelongsTo
+    public function selectedOptionLabels($options = null): array
     {
-        return $this->belongsTo(EventRoomOption::class, 'option_id');
+        $ids = collect($this->selected_option_ids ?? [])
+            ->map(fn ($v) => (int) $v)
+            ->filter(fn ($v) => $v > 0)
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $bag = $options ?? EventRoomOption::query()
+            ->whereIn('id', $ids)
+            ->get(['id', 'label'])
+            ->keyBy('id');
+
+        return $ids
+            ->map(fn (int $id) => $bag->get($id)?->label)
+            ->filter()
+            ->values()
+            ->all();
     }
 }

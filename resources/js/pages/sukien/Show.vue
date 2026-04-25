@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import EventBetController from '@/actions/App/Http/Controllers/Sukien/EventBetController';
-import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
 import CurrencyInput from '@/components/CurrencyInput.vue';
 import { formatVnd } from '@/lib/vnd';
@@ -13,10 +12,9 @@ import {
     type SukienStatsPayload,
 } from '@/echo';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Check, ChevronDown, History, Settings2, Timer, Users, Wallet, Wifi, WifiOff, X } from 'lucide-vue-next';
+import { Check, ChevronDown, History, Timer, Users, Wallet, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { Button } from '@/components/ui/button';
-import { home } from '@/routes';
+import CButton from '@/components/client/CButton.vue';
 
 type Opt = { id: number; label: string; bg_color: string; text_color: string };
 type OpenRoundT = {
@@ -26,14 +24,18 @@ type OpenRoundT = {
     started_at: string | null;
     auto_end_at: string | null;
     duration_seconds: number | null;
-    preset: { id: number; label: string; bg_color: string; text_color: string } | null;
 };
 type RoundHistory = {
     id: number;
     round_number: number;
     name: string;
     ended_at: string | null;
-    preset: { label: string; bg_color: string; text_color: string };
+};
+type UserBet = {
+    id: number;
+    option_ids: number[];
+    option_labels: string[];
+    amount_vnd: number;
 };
 
 const QUICK_AMOUNTS = [100_000, 300_000, 400_000, 500_000];
@@ -52,14 +54,14 @@ const props = defineProps<{
     recentRounds: RoundHistory[];
     recentRoundsTotal: number;
     recentRoundsPerPage: number;
-    userBet: { option_id: number; option_label: string; amount_vnd: number } | null;
+    userBet: UserBet | null;
     betsStats: { betsCount: number; totalAmountVnd: number } | null;
     isAdmin: boolean;
     userBalanceVnd: number;
 }>();
 
 const liveOpenRound = ref<OpenRoundT | null>(props.openRound ? { ...props.openRound } : null);
-const liveUserBet = ref(props.userBet ? { ...props.userBet } : null);
+const liveUserBet = ref<UserBet | null>(props.userBet ? { ...props.userBet } : null);
 const liveBalance = ref<number>(props.userBalanceVnd ?? 0);
 const liveBetsCount = ref(props.betsStats?.betsCount ?? 0);
 const liveTotalVnd = ref(props.betsStats?.totalAmountVnd ?? 0);
@@ -151,22 +153,22 @@ onMounted(() => {
             liveOpenRound.value = {
                 id: p.eventRoundId,
                 round_number: p.roundNumber,
-                name: `Kỳ #${p.roundNumber}`,
+                name: `Phiên #${p.roundNumber}`,
                 started_at: new Date().toISOString(),
                 auto_end_at: p.autoEndAt ?? null,
                 duration_seconds: null,
-                preset: p.presetOption,
             };
             liveUserBet.value = null;
+            resetSelection();
             liveBetsCount.value = 0;
             liveTotalVnd.value = 0;
         },
         onRoundEnded: () => {
             liveOpenRound.value = null;
             liveUserBet.value = null;
+            resetSelection();
             liveBetsCount.value = 0;
             liveTotalVnd.value = 0;
-            // Force a hard reload of recent rounds list and reset pagination state.
             historyPage.value = 1;
             historyHasMore.value = false;
             historyExtra.value = [];
@@ -221,7 +223,7 @@ watch(
             liveBetsCount.value = props.betsStats.betsCount;
             liveTotalVnd.value = props.betsStats.totalAmountVnd;
         }
-        // Reset pagination state when the base list refreshes.
+        resetSelection();
         historyPage.value = 1;
         historyExtra.value = [];
         historyHasMore.value = props.recentRoundsTotal > props.recentRounds.length;
@@ -229,88 +231,144 @@ watch(
     { deep: true },
 );
 
-const selectedOptionId = ref<number | null>(props.options[0]?.id ?? null);
-const amountVnd = ref(0);
+const selectedIds = ref<Set<number>>(new Set());
+const draftAmount = ref<number>(0);
 
-function setAmount(n: number) {
-    amountVnd.value = Math.max(0, Math.min(n, liveBalance.value));
+function resetSelection() {
+    selectedIds.value = new Set();
+    draftAmount.value = 0;
 }
 
-function resetAmount() {
-    setAmount(0);
+const hasPlacedBet = computed(() => liveUserBet.value !== null);
+
+function isSelected(optionId: number): boolean {
+    return selectedIds.value.has(optionId);
 }
 
-watch(liveBalance, (b) => {
-    if (amountVnd.value > b) setAmount(b);
+function toggleOption(optionId: number) {
+    if (hasPlacedBet.value) {
+        return;
+    }
+    const next = new Set(selectedIds.value);
+    if (next.has(optionId)) {
+        next.delete(optionId);
+    } else {
+        next.add(optionId);
+    }
+    selectedIds.value = next;
+}
+
+function selectAllAvailable() {
+    if (hasPlacedBet.value) {
+        return;
+    }
+    selectedIds.value = new Set(props.options.map((o) => o.id));
+}
+
+const selectedCount = computed(() => selectedIds.value.size);
+
+const totalDraft = computed(() => draftAmount.value);
+
+function setDraftAmount(n: number) {
+    draftAmount.value = Math.max(0, Math.min(n, 1_000_000_000));
+}
+
+function applyQuickAmount(n: number) {
+    draftAmount.value = n;
+}
+
+function resetAllDrafts() {
+    resetSelection();
+}
+
+watch(liveBalance, () => {
+    if (totalDraft.value > liveBalance.value) {
+        draftAmount.value = 0;
+    }
 });
 
-const betForm = useForm({
-    option_id: 0,
+const insufficientBalance = computed(() => totalDraft.value > liveBalance.value);
+
+const canPlaceBet = computed(() => {
+    if (!liveOpenRound.value || timerExpired.value) {
+        return false;
+    }
+    if (hasPlacedBet.value) {
+        return false;
+    }
+    if (selectedCount.value === 0) {
+        return false;
+    }
+    if (draftAmount.value < 1000) {
+        return false;
+    }
+    if (insufficientBalance.value) {
+        return false;
+    }
+    return true;
+});
+
+const betForm = useForm<{ option_ids: number[]; amount_vnd: number }>({
+    option_ids: [],
     amount_vnd: 0,
 });
 
 function submitBet() {
-    if (!selectedOptionId.value) {
+    if (!canPlaceBet.value) {
         return;
     }
-    const amt = amountVnd.value;
-    if (amt < 1000) {
+    const total = draftAmount.value;
+    const optionIds = props.options
+        .filter((o) => selectedIds.value.has(o.id))
+        .map((o) => o.id);
+    if (optionIds.length === 0) {
         return;
     }
-    if (amt > liveBalance.value) {
-        return;
-    }
-    betForm.option_id = selectedOptionId.value;
-    betForm.amount_vnd = amt;
+    betForm.option_ids = optionIds;
+    betForm.amount_vnd = total;
     betForm.post(EventBetController.store.url(props.eventRoom.slug), {
         preserveScroll: true,
         onSuccess: () => {
             betForm.clearErrors();
-            resetAmount();
-            liveBalance.value = Math.max(0, liveBalance.value - amt);
+            liveBalance.value = Math.max(0, liveBalance.value - total);
+            resetSelection();
             router.reload({ only: ['userBet', 'betsStats', 'userBalanceVnd'] });
         },
     });
 }
 
-const cancelForm = useForm({});
+const cancelForm = useForm<Record<string, never>>({});
 const cancelError = ref<string | null>(null);
+const cancellingAll = ref(false);
 
-function cancelBet() {
+function cancelAllBets() {
     if (!liveUserBet.value) {
         return;
     }
-    if (!confirm('Huỷ đặt cược kỳ này? Số tiền sẽ được hoàn lại số dư.')) {
+    if (!confirm('Huỷ tham gia phiên này? Số tiền sẽ được hoàn lại số dư.')) {
         return;
     }
     cancelError.value = null;
+    cancellingAll.value = true;
     const refundAmount = liveUserBet.value.amount_vnd;
     cancelForm.delete(EventBetController.destroy.url(props.eventRoom.slug), {
         preserveScroll: true,
         onSuccess: () => {
             liveBalance.value = liveBalance.value + refundAmount;
             liveUserBet.value = null;
+            cancellingAll.value = false;
             router.reload({ only: ['userBet', 'betsStats', 'userBalanceVnd'] });
         },
         onError: (errors) => {
-            cancelError.value = (errors.bet as string | undefined) ?? 'Không thể huỷ đặt cược.';
+            cancelError.value = (errors.bet as string | undefined) ?? 'Không thể huỷ tham gia.';
+            cancellingAll.value = false;
         },
     });
 }
 
-const insufficientBalance = computed(() => amountVnd.value > liveBalance.value);
+const placedOptionLabels = computed(() => liveUserBet.value?.option_labels ?? []);
+const placedAmount = computed(() => liveUserBet.value?.amount_vnd ?? 0);
 
-const canPlaceBet = computed(
-    () =>
-        !!liveOpenRound.value &&
-        !liveUserBet.value &&
-        !timerExpired.value &&
-        selectedOptionId.value !== null &&
-        amountVnd.value >= 1000 &&
-        amountVnd.value <= liveBalance.value,
-);
-
-// Pagination for recent rounds.
 const historyPage = ref(1);
 const historyExtra = ref<RoundHistory[]>([]);
 const historyHasMore = ref<boolean>(props.recentRoundsTotal > props.recentRounds.length);
@@ -347,7 +405,7 @@ async function loadMoreRounds() {
         historyPage.value = json.page;
         historyHasMore.value = json.hasMore;
     } catch (e) {
-        historyError.value = e instanceof Error ? e.message : 'Không thể tải thêm kỳ.';
+        historyError.value = e instanceof Error ? e.message : 'Không thể tải thêm phiên.';
     } finally {
         historyLoading.value = false;
     }
@@ -400,19 +458,8 @@ async function loadMoreRounds() {
                     #{{ liveOpenRound.round_number }}
                 </div>
                 <div class="min-w-0">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-900/80">Kỳ đang mở</p>
-                    <div v-if="liveOpenRound.preset" class="mt-0.5 flex items-center gap-1">
-                        <span class="text-[11px] text-stone-600">Kết quả:</span>
-                        <span
-                            class="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-semibold shadow"
-                            :style="{
-                                backgroundColor: liveOpenRound.preset.bg_color,
-                                color: liveOpenRound.preset.text_color,
-                            }">
-                            <Check class="size-3" />
-                            {{ liveOpenRound.preset.label }}
-                        </span>
-                    </div>
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-900/80">Phiên đang mở</p>
+                    <p class="truncate text-sm font-medium text-stone-800">{{ liveOpenRound.name }}</p>
                 </div>
             </div>
             <div v-if="remainingLabel !== null"
@@ -424,102 +471,121 @@ async function loadMoreRounds() {
         </section>
         <section v-else
             class="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-3 py-2 text-center text-xs text-stone-600">
-            Chưa có kỳ nào đang mở. Vui lòng đợi kỳ mới.
+            Chưa có phiên nào đang mở. Vui lòng đợi phiên mới.
         </section>
 
         <section v-if="liveOpenRound && !isAdmin" class="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
-            <div v-if="liveUserBet" class="space-y-2">
-                <div class="rounded-lg bg-emerald-50 p-2 text-sm">
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="text-xs text-emerald-800">Bạn đã đặt</span>
-                        <span class="font-mono text-base font-bold text-emerald-900">{{
-                            formatVnd(liveUserBet.amount_vnd)
-                            }}</span>
-                    </div>
-                    <div class="mt-1 flex items-center gap-1 text-xs text-emerald-800">
-                        cho
-                        <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold" :style="{
-                            backgroundColor: options.find((o) => o.id === liveUserBet!.option_id)?.bg_color,
-                            color: options.find((o) => o.id === liveUserBet!.option_id)?.text_color,
-                        }">
-                            {{ liveUserBet.option_label }}
-                        </span>
-                    </div>
-                </div>
-                <Button type="button" variant="outline" size="sm"
-                    class="w-full border-red-200 text-red-700 hover:bg-red-50"
-                    :disabled="cancelForm.processing || timerExpired || cancelLocked" @click="cancelBet">
-                    <X class="size-4" />
-                    {{
-                        cancelForm.processing
-                            ? 'Đang huỷ…'
-                            : timerExpired
-                                ? 'Hết giờ — không thể huỷ'
-                                : cancelLocked
-                                    ? 'Còn dưới 5s — không thể huỷ'
-                                    : 'Huỷ đặt cược (hoàn tiền)'
-                    }}
-                </Button>
-                <p v-if="cancelError" class="text-xs text-red-600">{{ cancelError }}</p>
-            </div>
-            <div v-else class="space-y-2">
-                <p class="text-xs text-stone-500">Chọn 1 mục, nhập số tiền (tối thiểu 1.000đ).</p>
-                <div class="grid grid-cols-2 gap-1.5">
-                    <button v-for="o in options" :key="o.id" type="button"
-                        class="flex items-center gap-1.5 rounded-lg border-2 px-2 py-1.5 text-left text-sm transition active:scale-95"
-                        :class="selectedOptionId === o.id
-                            ? 'border-amber-500 bg-amber-50'
-                            : 'border-stone-200 bg-white'
-                            " @click="selectedOptionId = o.id">
-                        <span class="flex size-3.5 shrink-0 items-center justify-center rounded-full border-2"
-                            :class="selectedOptionId === o.id ? 'border-amber-600 bg-amber-500' : 'border-stone-300'" />
-                        <span
-                            class="inline-flex flex-1 items-center justify-center rounded px-1.5 py-0.5 text-xs font-semibold"
-                            :style="{ backgroundColor: o.bg_color, color: o.text_color }">
-                            {{ o.label }}
-                        </span>
+            <div class="space-y-2">
+                <div v-if="!hasPlacedBet" class="flex items-center justify-between gap-2">
+                    <p class="text-xs text-stone-500">
+                        Tick các mục muốn tham gia (có thể chọn tất cả) rồi nhập số tiền.
+                    </p>
+                    <button type="button"
+                        class="text-[11px] font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800"
+                        @click="selectAllAvailable">
+                        Chọn tất cả
                     </button>
                 </div>
 
-                <div>
-                    <label for="vnd-amount"
-                        class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-600">
-                        Số tiền cược
+                <ul class="grid grid-cols-2 gap-1.5">
+                    <li v-for="o in options" :key="o.id">
+                        <button type="button" class="option-chip w-full"
+                            :class="{
+                                'option-chip-placed': hasPlacedBet,
+                                'option-chip-selected': !hasPlacedBet && isSelected(o.id),
+                            }" :disabled="hasPlacedBet" @click="toggleOption(o.id)">
+                            <span class="inline-flex shrink-0 items-center justify-center rounded px-2 py-1 text-xs font-bold min-w-14"
+                                :style="{ backgroundColor: o.bg_color, color: o.text_color }">
+                                {{ o.label }}
+                            </span>
+                            <template v-if="hasPlacedBet">
+                                <span class="ml-auto inline-flex size-5 items-center justify-center rounded border-2"
+                                    :class="liveUserBet?.option_ids.includes(o.id)
+                                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                                        : 'border-stone-200 bg-stone-50'">
+                                    <Check v-if="liveUserBet?.option_ids.includes(o.id)" class="size-3.5" />
+                                </span>
+                            </template>
+                            <template v-else>
+                                <span class="ml-auto inline-flex size-5 items-center justify-center rounded border-2"
+                                    :class="isSelected(o.id) ? 'border-amber-600 bg-amber-600 text-white' : 'border-stone-300 bg-white'">
+                                    <Check v-if="isSelected(o.id)" class="size-3.5" />
+                                </span>
+                            </template>
+                        </button>
+                    </li>
+                </ul>
+
+                <div v-if="hasPlacedBet"
+                    class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs text-emerald-900">
+                            Đã tham gia
+                            <strong class="font-mono text-sm">{{ formatVnd(placedAmount) }}</strong>
+                            với mục:
+                            <strong>{{ placedOptionLabels.join(', ') }}</strong>
+                        </p>
+                        <CButton type="button" variant="danger" size="sm" class="cancel-bet-btn"
+                            :disabled="cancelForm.processing || timerExpired || cancelLocked"
+                            @click="cancelAllBets">
+                            <X class="size-3.5" />
+                            {{ cancellingAll ? 'Đang huỷ…' : 'Huỷ' }}
+                        </CButton>
+                    </div>
+                </div>
+
+                <div v-if="!hasPlacedBet">
+                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-600">
+                        Số tiền tham gia
                     </label>
-                    <CurrencyInput id="vnd-amount" v-model="amountVnd" :max="liveBalance"
-                        :aria-invalid="insufficientBalance" input-class="bet-amount-input" />
+                    <CurrencyInput id="bet-amount" :model-value="draftAmount"
+                        @update:model-value="setDraftAmount" :max="liveBalance" placeholder="0"
+                        input-class="bet-amount-input w-full" />
 
                     <div class="mt-2 grid grid-cols-4 gap-1.5">
                         <button v-for="amt in QUICK_AMOUNTS" :key="amt" type="button" class="quick-chip"
-                            :class="{ 'is-active': amountVnd === amt }" :disabled="amt > liveBalance"
-                            @click="setAmount(amt)">
+                            :disabled="amt > liveBalance" @click="applyQuickAmount(amt)">
                             {{ amt >= 1_000_000 ? `${amt / 1_000_000}M` : `${amt / 1_000}K` }}
                         </button>
                     </div>
 
-                    <div class="mt-3 flex gap-2">
-                        <Button type="button" variant="outline" size="sm"
-                            class="h-10 flex-1 rounded-lg border-stone-300 text-stone-700 hover:bg-stone-50"
-                            :disabled="amountVnd === 0" @click="resetAmount">
+                    <p v-if="selectedCount > 0" class="mt-2 text-[11px] text-stone-500">
+                        Bạn tham gia phiên với {{ selectedCount }} mục đã chọn.
+                    </p>
+
+                    <div class="mt-2 flex gap-2">
+                        <CButton type="button" variant="ghost" size="md" class="flex-1"
+                            :disabled="selectedCount === 0 && draftAmount === 0" @click="resetAllDrafts">
                             Đặt lại
-                        </Button>
-                        <Button
-                            class="h-10 flex-2 rounded-lg bg-amber-600 text-base font-semibold text-white shadow-sm hover:bg-amber-700"
-                            size="sm" :disabled="!canPlaceBet || betForm.processing" @click="submitBet">
-                            {{ betForm.processing ? 'Đang gửi…' : 'Xác nhận đặt' }}
-                        </Button>
+                        </CButton>
+                        <CButton type="button" variant="gold" size="md" class="flex-[1.4]"
+                            :disabled="!canPlaceBet || betForm.processing" @click="submitBet">
+                            {{ betForm.processing ? 'Đang gửi…' : 'Xác nhận' }}
+                        </CButton>
                     </div>
 
                     <p v-if="insufficientBalance" class="mt-1.5 text-[11px] font-medium text-red-600">
-                        Số tiền vượt số dư ({{ formatVnd(liveBalance) }}).
+                        Số tiền tham gia vượt số dư ({{ formatVnd(liveBalance) }}).
+                    </p>
+                    <p v-else-if="selectedCount > 0 && draftAmount > 0 && draftAmount < 1000" class="mt-1.5 text-[11px] text-red-600">
+                        Số tiền tối thiểu là 1.000đ.
+                    </p>
+                    <p v-else-if="betForm.errors.option_ids" class="mt-1.5 text-[11px] text-red-600">
+                        {{ betForm.errors.option_ids }}
                     </p>
                     <p v-else-if="betForm.errors.amount_vnd" class="mt-1.5 text-[11px] text-red-600">
                         {{ betForm.errors.amount_vnd }}
                     </p>
                     <p v-else-if="timerExpired" class="mt-1.5 text-[11px] text-red-600">
-                        Hết giờ — vui lòng đợi kỳ tiếp theo.
+                        Hết giờ — vui lòng đợi phiên tiếp theo.
                     </p>
                 </div>
+
+                <p v-if="cancelError" class="text-xs text-red-600">{{ cancelError }}</p>
+                <p v-if="cancelLocked && hasPlacedBet"
+                    class="text-[11px] text-stone-500">
+                    Còn dưới 5 giây — không thể huỷ tham gia.
+                </p>
             </div>
         </section>
 
@@ -527,52 +593,45 @@ async function loadMoreRounds() {
             <div class="mb-1.5 flex items-center justify-between">
                 <h3 class="flex items-center gap-1 text-sm font-semibold text-stone-800">
                     <History class="size-4" />
-                    Các kỳ đã kết thúc
+                    Các phiên đã kết thúc
                 </h3>
                 <span class="text-[11px] text-stone-500">{{ displayedRounds.length }}/{{ recentRoundsTotal }}</span>
             </div>
             <ul v-if="displayedRounds.length" class="space-y-1 text-sm">
                 <li v-for="h in displayedRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5">
-                    <span class="text-xs text-stone-700">Kỳ #{{ h.round_number }}</span>
-                    <span class="rounded px-1.5 py-0.5 text-[11px] font-medium capitalize" :style="{
-                        backgroundColor: h.preset.bg_color,
-                        color: h.preset.text_color,
-                    }">
-                        {{ h.preset.label }}
-                    </span>
+                    <span class="text-xs text-stone-700">Phiên #{{ h.round_number }}</span>
+                    <span class="text-[11px] text-stone-500">{{ h.name }}</span>
                 </li>
             </ul>
-            <p v-else class="text-xs text-stone-500">Chưa có kỳ nào kết thúc.</p>
+            <p v-else class="text-xs text-stone-500">Chưa có phiên nào kết thúc.</p>
 
             <div v-if="historyHasMore" class="mt-2">
-                <Button type="button" variant="outline" size="sm" class="w-full" :disabled="historyLoading"
+                <CButton type="button" variant="outline" size="sm" block :disabled="historyLoading"
                     @click="loadMoreRounds">
                     <ChevronDown v-if="!historyLoading" class="size-4" />
                     {{ historyLoading ? 'Đang tải…' : `Xem thêm (còn ${recentRoundsTotal - displayedRounds.length})` }}
-                </Button>
+                </CButton>
             </div>
             <p v-if="historyError" class="mt-1 text-[11px] text-red-600">{{ historyError }}</p>
         </section>
 
-        <div class="text-center text-xs">
-
-        </div>
+        <span v-if="rtConnected" class="hidden">{{ presenceNames.length }}</span>
     </div>
 </template>
 
 <style scoped>
-/* Make the reused CurrencyInput larger inside the betting card. */
 :deep(.bet-amount-input) {
-    height: 3rem;
-    font-size: 1.375rem;
+    height: 2.25rem;
+    font-size: 0.95rem;
     font-weight: 700;
-    border-width: 2px;
-    border-radius: 0.75rem;
+    border-width: 1.5px;
+    border-radius: 0.5rem;
+    background-color: white;
 }
 
 :deep(.bet-amount-input:focus) {
-    box-shadow: 0 0 0 4px rgb(254 243 199);
+    box-shadow: 0 0 0 3px rgb(254 243 199);
 }
 
 .quick-chip {
@@ -610,10 +669,42 @@ async function loadMoreRounds() {
     cursor: not-allowed;
 }
 
-.quick-chip.is-active {
+.option-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border: 2px solid rgb(231 229 228);
+    border-radius: 0.625rem;
+    background-color: white;
+    transition: border-color 150ms ease, background-color 150ms ease, transform 100ms ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.option-chip:hover:not(:disabled) {
+    border-color: rgb(252 211 77);
+    background-color: rgb(255 251 235);
+}
+
+.option-chip:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.option-chip-selected {
     border-color: rgb(217 119 6);
-    background-color: rgb(254 243 199);
-    color: rgb(146 64 14);
+    background-color: rgb(255 251 235);
     box-shadow: 0 0 0 3px rgb(254 243 199);
+}
+
+.option-chip-placed {
+    border-color: rgb(167 243 208);
+    background-color: rgb(236 253 245);
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.cancel-bet-btn {
+    flex-shrink: 0;
 }
 </style>
