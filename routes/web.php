@@ -81,6 +81,13 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
             });
         });
 
+        // Shared admin/staff endpoints (withdrawals can be processed by staff too).
+        Route::prefix('withdrawals')->name('withdrawals.')->controller(AdminWithdrawalController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('{withdrawal}/approve', 'approve')->name('approve');
+            Route::post('{withdrawal}/reject', 'reject')->name('reject');
+        });
+
         Route::middleware('role:admin')->group(function () {
             Route::prefix('staff')->name('staff.')->controller(StaffController::class)->group(function () {
                 Route::get('/', 'index')->name('index');
@@ -99,12 +106,6 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::get('{name}', 'view')->name('view');
                 Route::get('{key}/load', 'load')->name('load');
                 Route::post('{key}', 'update')->name('update');
-            });
-
-            Route::prefix('withdrawals')->name('withdrawals.')->controller(AdminWithdrawalController::class)->group(function () {
-                Route::get('/', 'index')->name('index');
-                Route::post('{withdrawal}/approve', 'approve')->name('approve');
-                Route::post('{withdrawal}/reject', 'reject')->name('reject');
             });
 
             Route::prefix('sukien-rooms')->name('sukien-rooms.')->group(function () {

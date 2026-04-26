@@ -4,6 +4,7 @@ import EventRoundController from '@/actions/App/Http/Controllers/Admin/EventRoun
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -262,19 +263,26 @@ const QUICK_SECONDS = [30, 45, 60, 90, 120];
 const minSeconds = Math.max(1, Math.floor(props.durationLimits.minSeconds));
 const maxSeconds = Math.max(minSeconds, Math.floor(props.durationLimits.maxSeconds));
 
-const startForm = useForm<{ name: string; duration_seconds: number }>({
+const startForm = useForm<{ name: string; duration_seconds: number; continuous: boolean }>({
     name: '',
     duration_seconds: 60,
+    continuous: false,
 });
 
 function setDurationSeconds(s: number) {
     const clamped = Math.max(minSeconds, Math.min(maxSeconds, Math.round(s)));
     startForm.duration_seconds = clamped;
+    startForm.continuous = false;
 }
 
 function submitStart() {
     startForm
         .transform((data) => {
+            // Continuous mode: omit duration_seconds entirely so the backend
+            // creates an open-ended round (no auto_end_at).
+            if (data.continuous) {
+                return { name: data.name } as Record<string, unknown>;
+            }
             const seconds = Math.max(
                 minSeconds,
                 Math.min(maxSeconds, Math.round(Number(data.duration_seconds) || 0)),
@@ -426,10 +434,7 @@ function submitEnd() {
                         Phiên đang mở
                     </p>
                     <p class="text-2xl font-bold text-amber-950">
-                        #{{ liveOpenRound.round_number }}
-                        <span class="ml-1 text-sm font-normal text-amber-900/70">
-                            {{ liveOpenRound.name }}
-                        </span>
+                        {{ liveOpenRound.name }}
                     </p>
                 </div>
                 <div v-if="remainingLabel !== null"
@@ -484,6 +489,7 @@ function submitEnd() {
             <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
                 Đặt tên phiên (tuỳ chọn) và thời lượng (giây). Khi hết giờ, phiên sẽ tự động kết thúc.
+                Bật <strong>Phiên chạy liên tục</strong> nếu muốn phiên không tự kết thúc.
             </p>
 
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -493,14 +499,18 @@ function submitEnd() {
                 </div>
 
                 <div>
-                    <Label for="duration">Thời lượng (giây) — {{ minSeconds }}–{{ maxSeconds }}</Label>
+                    <Label for="duration" :class="startForm.continuous ? 'opacity-50' : ''">
+                        Thời lượng (giây) — {{ minSeconds }}–{{ maxSeconds }}
+                    </Label>
                     <Input id="duration" v-model.number="startForm.duration_seconds" type="number" :min="minSeconds"
-                        :max="maxSeconds" class="mt-1" />
+                        :max="maxSeconds" class="mt-1" :disabled="startForm.continuous" />
                     <div class="mt-2 flex flex-wrap gap-1.5">
                         <button v-for="s in QUICK_SECONDS" :key="s" type="button"
-                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs" :class="startForm.duration_seconds === s
+                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                            :class="!startForm.continuous && startForm.duration_seconds === s
                                 ? 'bg-amber-500 text-white'
-                                : 'bg-stone-50 text-black'" @click="setDurationSeconds(s)">
+                                : 'bg-stone-50 text-black'"
+                            :disabled="startForm.continuous" @click="setDurationSeconds(s)">
                             {{ s }}s
                         </button>
                     </div>
@@ -509,6 +519,12 @@ function submitEnd() {
                     </p>
                 </div>
             </div>
+
+            <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-stone-700">
+                <Checkbox :model-value="startForm.continuous"
+                    @update:model-value="(v) => (startForm.continuous = v === true)" />
+                <span>Phiên chạy liên tục (không tự kết thúc)</span>
+            </label>
 
             <Button class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
                 :disabled="startForm.processing" @click="submitStart">
@@ -521,8 +537,7 @@ function submitEnd() {
             <ul v-if="recentRounds.length" class="max-h-72 space-y-1 overflow-y-auto pr-1 text-sm">
                 <li v-for="h in recentRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">
-                    <span class="text-stone-700">Phiên #{{ h.round_number }}</span>
-                    <span class="text-xs text-stone-500">{{ h.name }}</span>
+                    <span class="text-stone-700">{{ h.name }}</span>
                 </li>
             </ul>
             <p v-else class="text-sm text-muted-foreground">Chưa có phiên nào kết thúc.</p>

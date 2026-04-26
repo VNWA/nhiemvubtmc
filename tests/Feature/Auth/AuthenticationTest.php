@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
@@ -57,6 +58,35 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('two-factor.login'));
         $response->assertSessionHas('login.id', $user->id);
         $this->assertGuest();
+    }
+
+    public function test_login_records_last_login_metadata_and_one_activity_log()
+    {
+        $user = User::factory()->create([
+            'last_login_at' => null,
+            'last_login_ip' => null,
+        ]);
+
+        $this->post(route('login.store'), [
+            'username' => $user->username,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+
+        $user->refresh();
+        $this->assertNotNull($user->last_login_at, 'last_login_at should be set on login');
+        $this->assertNotNull($user->last_login_ip, 'last_login_ip should be set on login');
+
+        // Listener must fire exactly once: there should be a single user.login row.
+        $this->assertSame(
+            1,
+            ActivityLog::query()
+                ->where('action', 'user.login')
+                ->where('target_user_id', $user->getKey())
+                ->count(),
+            'user.login activity log should be recorded exactly once per login'
+        );
     }
 
     public function test_users_can_not_authenticate_with_invalid_password()
