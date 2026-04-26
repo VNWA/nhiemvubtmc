@@ -164,6 +164,29 @@ function confirmDelete(name: string) {
     return window.confirm(`Xóa nhân viên "${name}"?\nUser do nhân viên tạo sẽ trở thành tự đăng ký.`);
 }
 
+const rowProcessing = reactive<Record<number, boolean>>({});
+
+/**
+ * Dùng router.delete thay vì Form gắn submit, vì Inertia Form vẫn có thể gửi khi bấm Hủy ở hộp thoại confirm.
+ */
+function deleteStaff(row: Row) {
+    if (rowProcessing[row.id]) {
+        return;
+    }
+
+    if (!confirmDelete(row.name)) {
+        return;
+    }
+
+    rowProcessing[row.id] = true;
+    router.delete(StaffController.destroy.url({ staff: row.id }), {
+        preserveScroll: true,
+        onFinish: () => {
+            rowProcessing[row.id] = false;
+        },
+    });
+}
+
 const hasFilters = computed(() => !!(search.value || ipFilter.value || statusFilter.value));
 
 defineOptions({
@@ -331,13 +354,16 @@ defineOptions({
                                             {{ u.status === 'locked' ? 'Mở' : 'Khóa' }}
                                         </Button>
                                     </Form>
-                                    <Form v-bind="StaffController.destroy.form({ staff: u.id })" @submit="(event: SubmitEvent) => {
-                                        if (!confirmDelete(u.name)) event.preventDefault();
-                                    }" #default="{ processing }">
-                                        <Button type="submit" variant="destructive" size="sm" :disabled="processing">
-                                            <Trash2 class="size-3.5" /> Xóa
-                                        </Button>
-                                    </Form>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                        :disabled="rowProcessing[u.id]"
+                                        @click="deleteStaff(u)"
+                                    >
+                                        <Trash2 class="size-3.5" />
+                                        Xóa
+                                    </Button>
                                 </div>
                             </td>
                         </tr>

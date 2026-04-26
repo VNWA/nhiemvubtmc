@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import AccountController from '@/actions/App/Http/Controllers/Client/AccountController';
-import { formatVnd } from '@/lib/vnd';
-import { logout } from '@/routes';
 import { Head, Link, router } from '@inertiajs/vue3';
 import {
     ArrowDownCircle,
     ArrowUpCircle,
-    BarChart3,
+    CalendarHeart,
     ChevronRight,
+    Gift,
     History,
     Landmark,
     LogOut,
     ShieldCheck,
     User2,
     Wallet,
-    type LucideIcon,
-    CalendarHeart,
 } from 'lucide-vue-next';
+import type { LucideIcon } from 'lucide-vue-next';
 import { computed } from 'vue';
+import AccountController from '@/actions/App/Http/Controllers/Client/AccountController';
+import { formatVnd } from '@/lib/vnd';
+import { logout } from '@/routes';
 
 type MenuItem = {
     href: string;
@@ -44,7 +44,12 @@ const props = defineProps<{
         bank_account_number: string | null;
         bank_account_name: string | null;
     };
-    totals: { totalCreditVnd: number; totalDebitVnd: number; totalCount: number };
+    totals: {
+        totalCreditVnd: number;
+        totalDebitVnd: number;
+        totalCommissionVnd: number;
+        totalCount: number;
+    };
     eventCount?: number;
 }>();
 
@@ -54,8 +59,15 @@ const bankConnected = computed(
 
 const maskedAccount = computed(() => {
     const num = props.bank.bank_account_number;
-    if (!num) return null;
-    if (num.length <= 4) return num;
+
+    if (!num) {
+return null;
+}
+
+    if (num.length <= 4) {
+return num;
+}
+
     return '•••• ' + num.slice(-4);
 });
 
@@ -106,7 +118,10 @@ const menuItems = computed<MenuItem[]>(() => [
 ]);
 
 function doLogout() {
-    if (!confirm('Đăng xuất khỏi tài khoản?')) return;
+    if (!confirm('Đăng xuất khỏi tài khoản?')) {
+return;
+}
+
     router.post(logout().url, {}, { preserveScroll: false });
 }
 </script>
@@ -128,18 +143,32 @@ function doLogout() {
                     <Wallet class="size-6" />
                 </div>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div class="balance-chip">
+            <div
+                class="mt-3 grid grid-cols-1 gap-2 text-xs min-[400px]:grid-cols-3"
+            >
+                <div class="balance-chip min-w-0">
                     <p class="balance-label flex items-center gap-1">
-                        <ArrowUpCircle class="size-3.5" /> Tổng nạp
+                        <ArrowUpCircle class="size-3.5 shrink-0" /> Tổng nạp
                     </p>
-                    <p class="mt-0.5 font-mono font-semibold">{{ formatVnd(totals.totalCreditVnd) }}</p>
+                    <p class="mt-0.5 break-all font-mono font-semibold tabular-nums">
+                        {{ formatVnd(totals.totalCreditVnd) }}
+                    </p>
                 </div>
-                <div class="balance-chip">
+                <div class="balance-chip min-w-0">
                     <p class="balance-label flex items-center gap-1">
-                        <ArrowDownCircle class="size-3.5" /> Tổng rút
+                        <ArrowDownCircle class="size-3.5 shrink-0" /> Tổng rút
                     </p>
-                    <p class="mt-0.5 font-mono font-semibold">{{ formatVnd(totals.totalDebitVnd) }}</p>
+                    <p class="mt-0.5 break-all font-mono font-semibold tabular-nums">
+                        {{ formatVnd(totals.totalDebitVnd) }}
+                    </p>
+                </div>
+                <div class="balance-chip min-w-0">
+                    <p class="balance-label flex items-center gap-1">
+                        <Gift class="size-3.5 shrink-0" /> Hoa hồng
+                    </p>
+                    <p class="mt-0.5 break-all font-mono font-semibold tabular-nums">
+                        {{ formatVnd(totals.totalCommissionVnd) }}
+                    </p>
                 </div>
             </div>
         </section>

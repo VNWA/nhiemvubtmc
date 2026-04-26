@@ -29,11 +29,13 @@ class AccountController extends Controller
         $user = $request->user();
         abort_if($user === null, 403);
 
+        $commissionSource = WalletSource::Commission->value;
         $totals = WalletTransaction::query()
             ->where('user_id', $user->getKey())
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
                 coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
                 count(*) as total_count
             ")
             ->first();
@@ -49,6 +51,7 @@ class AccountController extends Controller
             'totals' => [
                 'totalCreditVnd' => (int) ($totals?->total_credit ?? 0),
                 'totalDebitVnd' => (int) ($totals?->total_debit ?? 0),
+                'totalCommissionVnd' => (int) ($totals?->total_commission ?? 0),
                 'totalCount' => (int) ($totals?->total_count ?? 0),
             ],
             'eventCount' => (int) $eventCount,

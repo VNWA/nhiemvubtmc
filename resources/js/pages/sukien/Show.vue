@@ -752,7 +752,7 @@ async function loadMoreRounds() {
     overflow-wrap: anywhere;
     word-break: break-word;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
