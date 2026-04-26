@@ -5,7 +5,6 @@ import CurrencyInput from '@/components/CurrencyInput.vue';
 import InputError from '@/components/InputError.vue';
 import CButton from '@/components/client/CButton.vue';
 import CLabel from '@/components/client/CLabel.vue';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, Banknote, CheckCircle2, ChevronsRight, Hourglass, Landmark, Send, XCircle } from 'lucide-vue-next';
@@ -69,10 +68,6 @@ function cancel(id: number) {
     router.delete(WithdrawalController.cancel.url({ withdrawal: id }), {
         preserveScroll: true,
     });
-}
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '';
 }
 
 function statusIcon(s: string) {
@@ -229,7 +224,7 @@ function statusChipClass(s: string): string {
                                 </span>
                             </div>
                             <p class="mt-0.5 text-xs text-stone-500">
-                                {{ formatDate(row.created_at) }}
+                                {{ row.created_at ?? '' }}
                             </p>
                             <p v-if="row.note" class="mt-1 text-xs text-stone-600">
                                 Ghi chú: {{ row.note }}

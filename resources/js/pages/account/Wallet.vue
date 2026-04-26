@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import AccountController from '@/actions/App/Http/Controllers/Client/AccountController';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link } from '@inertiajs/vue3';
 import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, ChevronDown, Gift, History, Ticket, Wallet } from 'lucide-vue-next';
@@ -114,18 +113,6 @@ function setFilter(value: Filter) {
     fetchPage(1, true);
 }
 
-function formatDateTime(iso: string | null): string {
-    return iso
-        ? formatVnDateTime(iso, {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: undefined,
-          })
-        : '—';
-}
 </script>
 
 <template>
@@ -211,7 +198,7 @@ function formatDateTime(iso: string | null): string {
                                         : 'border-rose-200 bg-rose-50 text-rose-700'">
                                 {{ tx.source_label }}
                             </span>
-                            <span>{{ formatDateTime(tx.created_at) }}</span>
+                            <span>{{ tx.created_at ?? '—' }}</span>
                         </div>
                     </div>
                     <div class="text-right">

@@ -13,7 +13,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatVnDateTime } from '@/lib/datetime';
 
 type UserRef = { id: number; name: string; username: string } | null;
 
@@ -92,10 +91,6 @@ function resetFilters() {
     actionFilter.value = '';
     dateFrom.value = '';
     dateTo.value = '';
-}
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function actionBadgeClass(action: string): string {
@@ -198,7 +193,7 @@ defineOptions({
                         </tr>
                         <tr v-for="log in logs.data" :key="log.id"
                             class="border-b border-border/40 transition hover:bg-muted/40 last:border-0 dark:border-sidebar-border/60">
-                            <td class="p-3 text-xs text-muted-foreground">{{ formatDate(log.created_at) }}</td>
+                            <td class="p-3 text-xs text-muted-foreground">{{ log.created_at ?? '—' }}</td>
                             <td class="p-3 text-xs">
                                 <div v-if="log.actor" class="flex flex-col leading-tight">
                                     <span class="text-foreground">{{ log.actor.name }}</span>

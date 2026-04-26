@@ -64,7 +64,7 @@ class ActivityLogController extends Controller
                 'description' => $log->description,
                 'meta' => $log->meta,
                 'ip' => $log->ip,
-                'created_at' => $log->created_at?->toIso8601String(),
+                'created_at' => $log->created_at?->formatVn(),
                 'actor' => $log->actor === null ? null : [
                     'id' => (int) $log->actor->getKey(),
                     'name' => $log->actor->name,

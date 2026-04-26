@@ -181,7 +181,7 @@ class SukienEventRoomController extends Controller
             'id' => (int) $round->getKey(),
             'round_number' => (int) $round->round_number,
             'name' => $round->name,
-            'ended_at' => $round->ended_at?->toIso8601String(),
+            'ended_at' => $round->ended_at?->formatVn(),
         ];
     }
 

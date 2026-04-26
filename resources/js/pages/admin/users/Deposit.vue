@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 
 type Txn = {
@@ -88,10 +87,6 @@ const submitClass = computed(() => {
     if (adjustOperation.value === 'debit') return 'submit-debit';
     return 'submit-commission';
 });
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '—';
-}
 
 function sourceChipClass(src: string): string {
     if (src === 'admin_credit')
@@ -356,7 +351,7 @@ defineOptions({
                                         {{ formatVnd(t.balance_after_vnd) }}
                                     </td>
                                     <td class="px-3 py-2 text-xs text-muted-foreground">
-                                        {{ formatDate(t.created_at) }}
+                                        {{ t.created_at ?? '—' }}
                                     </td>
                                 </tr>
                             </tbody>

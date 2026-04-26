@@ -15,7 +15,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { ArrowLeft, CalendarHeart } from 'lucide-vue-next';
@@ -67,10 +66,6 @@ for (const bet of props.bets.data) {
         refund_vnd: bet.refund_vnd,
         commission_vnd: bet.commission_vnd,
     };
-}
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function netForDraft(bet: Bet): number {
@@ -134,7 +129,7 @@ defineOptions({
                         <p class="text-[11px] text-muted-foreground">
                             🕒 Phiên #{{ bet.round?.number ?? '—' }}
                             <span v-if="bet.round?.name" class="text-stone-400">· {{ bet.round.name }}</span>
-                            · {{ formatDate(bet.created_at) }}
+                            · {{ bet.created_at ?? '—' }}
                         </p>
                         <p class="text-xs">
                             <span class="text-muted-foreground">Kết quả hiện tại:</span>

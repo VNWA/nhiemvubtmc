@@ -150,7 +150,7 @@ class EventRoomController extends Controller
                 'id' => (int) $r->getKey(),
                 'round_number' => (int) $r->round_number,
                 'name' => $r->name,
-                'ended_at' => $r->ended_at?->toIso8601String(),
+                'ended_at' => $r->ended_at?->formatVn(),
             ]);
 
         return Inertia::render('admin/sukien-rooms/Manage', [

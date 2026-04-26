@@ -101,8 +101,8 @@ class WithdrawalController extends Controller
             'bank_name' => $r->bank_name,
             'bank_account_number' => $r->bank_account_number,
             'bank_account_name' => $r->bank_account_name,
-            'created_at' => $r->created_at?->toIso8601String(),
-            'processed_at' => $r->processed_at?->toIso8601String(),
+            'created_at' => $r->created_at?->formatVn(),
+            'processed_at' => $r->processed_at?->formatVn(),
             'can_cancel' => $r->status === WithdrawalStatus::Pending,
         ];
     }

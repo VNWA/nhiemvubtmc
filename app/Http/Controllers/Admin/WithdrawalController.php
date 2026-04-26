@@ -56,8 +56,8 @@ class WithdrawalController extends Controller
                     'id' => $r->processor->id,
                     'name' => $r->processor->name,
                 ] : null,
-                'processed_at' => $r->processed_at?->toIso8601String(),
-                'created_at' => $r->created_at?->toIso8601String(),
+                'processed_at' => $r->processed_at?->formatVn(),
+                'created_at' => $r->created_at?->formatVn(),
             ]);
 
         $counts = WithdrawalRequest::query()

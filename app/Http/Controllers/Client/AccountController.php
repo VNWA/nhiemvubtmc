@@ -84,7 +84,7 @@ class AccountController extends Controller
                     'net_vnd' => $refund + $commission - $fee,
                     'status' => $status->value,
                     'status_label' => $status->label(),
-                    'created_at' => $bet->created_at?->toIso8601String(),
+                    'created_at' => $bet->created_at?->formatVn(),
                     'option_labels' => $bet->selectedOptionLabels(),
                     'round_name' => $bet->eventRound?->name,
                     'round_number' => (int) ($bet->eventRound?->round_number ?? 0),
@@ -329,7 +329,7 @@ class AccountController extends Controller
             'username' => $user->username,
             'email' => $user->email,
             'phone' => $user->phone,
-            'created_at' => $user->created_at?->toIso8601String(),
+            'created_at' => $user->created_at?->formatVn(),
             'role' => $user->roles->first()?->name ?? 'user',
         ];
     }
@@ -359,7 +359,7 @@ class AccountController extends Controller
             'amount_vnd' => (int) $tx->amount_vnd,
             'balance_after_vnd' => (int) $tx->balance_after_vnd,
             'description' => $tx->description,
-            'created_at' => $tx->created_at?->toIso8601String(),
+            'created_at' => $tx->created_at?->formatVn(),
             'meta' => is_array($tx->meta) ? $tx->meta : [],
         ];
     }

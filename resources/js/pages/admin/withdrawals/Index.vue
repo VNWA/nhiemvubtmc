@@ -13,7 +13,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 
 type Item = {
@@ -122,10 +121,6 @@ function reject(row: Item) {
             },
         },
     );
-}
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function statusChipClass(s: string): string {
@@ -302,9 +297,9 @@ defineOptions({
                                     </p>
                                 </td>
                                 <td class="px-3 py-3 text-xs text-muted-foreground">
-                                    <div>Tạo: {{ formatDate(row.created_at) }}</div>
+                                    <div>Tạo: {{ row.created_at ?? '—' }}</div>
                                     <div v-if="row.processed_at">
-                                        Xử lý: {{ formatDate(row.processed_at) }}
+                                        Xử lý: {{ row.processed_at }}
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 text-right">

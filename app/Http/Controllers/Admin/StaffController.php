@@ -236,9 +236,9 @@ class StaffController extends Controller
             'status_label' => $status->label(),
             'managed_users_count' => (int) ($user->managed_users_count ?? 0),
             'event_bets_count' => (int) ($user->event_bets_count ?? 0),
-            'last_login_at' => $user->last_login_at?->toIso8601String(),
+            'last_login_at' => $user->last_login_at?->formatVn(),
             'last_login_ip' => $user->last_login_ip,
-            'created_at' => $user->created_at?->toIso8601String(),
+            'created_at' => $user->created_at?->formatVn(),
             'password' => $includePassword ? $user->password_hint : null,
         ];
     }

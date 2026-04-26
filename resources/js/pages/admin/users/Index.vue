@@ -27,7 +27,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 
 type CreatorRef = {
@@ -132,10 +131,6 @@ function statusClass(status: string): string {
     return status === 'locked'
         ? 'bg-stone-200 text-stone-700 dark:bg-stone-700/40 dark:text-stone-200'
         : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
-}
-
-function formatDate(iso: string | null): string {
-    return iso ? formatVnDateTime(iso) : '—';
 }
 
 const passwordCache = reactive<Record<number, string | null>>({});
@@ -358,12 +353,12 @@ defineOptions({
                             </td>
                             <td class="p-3 text-xs text-muted-foreground">
                                 <div v-if="u.last_login_at" class="flex flex-col leading-tight">
-                                    <span>{{ formatDate(u.last_login_at) }}</span>
+                                    <span>{{ u.last_login_at }}</span>
                                     <span class="font-mono text-[10px]">{{ u.last_login_ip || '—' }}</span>
                                 </div>
                                 <span v-else>—</span>
                             </td>
-                            <td class="p-3 text-xs text-muted-foreground">{{ formatDate(u.created_at) }}</td>
+                            <td class="p-3 text-xs text-muted-foreground">{{ u.created_at ?? '—' }}</td>
                             <td class="p-3 text-xs">
                                 <div v-if="u.creator" class="flex flex-col leading-tight">
                                     <span class="text-foreground">{{ u.creator.name }}</span>

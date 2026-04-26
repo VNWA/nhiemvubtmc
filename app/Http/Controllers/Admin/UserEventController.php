@@ -208,7 +208,7 @@ class UserEventController extends Controller
             'status' => $bet->status?->value ?? EventBetStatus::Pending->value,
             'status_label' => ($bet->status ?? EventBetStatus::Pending)->label(),
             'net_vnd' => $refund + $commission - $fee,
-            'created_at' => $bet->created_at?->toIso8601String(),
+            'created_at' => $bet->created_at?->formatVn(),
             'option_labels' => $bet->selectedOptionLabels(),
             'round' => $round === null ? null : [
                 'id' => (int) $round->getKey(),

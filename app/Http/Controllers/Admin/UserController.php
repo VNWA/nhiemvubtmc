@@ -212,12 +212,12 @@ class UserController extends Controller
         $domain = 'sjcsukien.com';
 
         $base = Str::slug($username, '.') ?: 'user';
-        $email = $base . '@' . $domain;
+        $email = $base.'@'.$domain;
 
         $i = 1;
 
         while (User::query()->where('email', $email)->exists()) {
-            $email = $base . $i . '@' . $domain;
+            $email = $base.$i.'@'.$domain;
             $i++;
         }
 
@@ -270,7 +270,7 @@ class UserController extends Controller
                 'amount_vnd' => (int) $t->amount_vnd,
                 'balance_after_vnd' => (int) $t->balance_after_vnd,
                 'description' => $t->description,
-                'created_at' => $t->created_at?->toIso8601String(),
+                'created_at' => $t->created_at?->formatVn(),
             ])
             ->values()
             ->all();
@@ -508,9 +508,9 @@ class UserController extends Controller
             'event_count' => (int) ($user->event_bets_count ?? 0),
             'status' => $status->value,
             'status_label' => $status->label(),
-            'last_login_at' => $user->last_login_at?->toIso8601String(),
+            'last_login_at' => $user->last_login_at?->formatVn(),
             'last_login_ip' => $user->last_login_ip,
-            'created_at' => $user->created_at?->toIso8601String(),
+            'created_at' => $user->created_at?->formatVn(),
             'creator' => $user->creator === null ? null : [
                 'id' => (int) $user->creator->getKey(),
                 'name' => $user->creator->name,
