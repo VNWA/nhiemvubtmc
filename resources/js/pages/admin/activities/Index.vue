@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatVnDateTime } from '@/lib/datetime';
 
 type UserRef = { id: number; name: string; username: string } | null;
 
@@ -94,12 +95,7 @@ function resetFilters() {
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function actionBadgeClass(action: string): string {

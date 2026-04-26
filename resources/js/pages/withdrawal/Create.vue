@@ -5,6 +5,7 @@ import CurrencyInput from '@/components/CurrencyInput.vue';
 import InputError from '@/components/InputError.vue';
 import CButton from '@/components/client/CButton.vue';
 import CLabel from '@/components/client/CLabel.vue';
+import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ArrowLeft, Ban, Banknote, CheckCircle2, ChevronsRight, Hourglass, Landmark, Send, XCircle } from 'lucide-vue-next';
@@ -71,12 +72,7 @@ function cancel(id: number) {
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '';
 }
 
 function statusIcon(s: string) {

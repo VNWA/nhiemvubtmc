@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 
 type Txn = {
@@ -89,12 +90,7 @@ const submitClass = computed(() => {
 });
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function sourceChipClass(src: string): string {

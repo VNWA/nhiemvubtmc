@@ -18,6 +18,7 @@ import Heading from '@/components/Heading.vue';
 import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatVnDateTime } from '@/lib/datetime';
 import {
     Select,
     SelectContent,
@@ -91,12 +92,7 @@ function statusClass(status: string): string {
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '—';
 }
 
 const passwordCache = reactive<Record<number, string | null>>({});

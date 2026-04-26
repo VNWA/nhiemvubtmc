@@ -65,7 +65,9 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'Asia/Ho_Chi_Minh'),
+    // Backend stores everything in UTC. The displayed timezone (Asia/Ho_Chi_Minh)
+    // is applied on the frontend only — see resources/js/lib/datetime.ts.
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

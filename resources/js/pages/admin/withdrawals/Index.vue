@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 
 type Item = {
@@ -124,12 +125,7 @@ function reject(row: Item) {
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function statusChipClass(s: string): string {

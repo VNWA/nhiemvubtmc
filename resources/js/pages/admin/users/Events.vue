@@ -15,6 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { formatVnDateTime } from '@/lib/datetime';
 import { formatVnd } from '@/lib/vnd';
 import { Form, Head, Link } from '@inertiajs/vue3';
 import { ArrowLeft, CalendarHeart } from 'lucide-vue-next';
@@ -69,12 +70,7 @@ for (const bet of props.bets.data) {
 }
 
 function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleString('vi-VN', { hour12: false });
-    } catch {
-        return iso;
-    }
+    return iso ? formatVnDateTime(iso) : '—';
 }
 
 function netForDraft(bet: Bet): number {
