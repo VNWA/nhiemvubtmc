@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        date_default_timezone_set(config('app.timezone'));
         // Note: UpdateUserOnLogin is auto-registered by Laravel via the
         // Login type-hint on its handle() method — do NOT re-register it
         // here, otherwise the user.login activity log fires twice.
