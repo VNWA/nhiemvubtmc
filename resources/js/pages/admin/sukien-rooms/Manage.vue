@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ExternalLink, Pencil, Power, PowerOff, Repeat, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
+import { ExternalLink, Pencil, Power, PowerOff, Repeat, RotateCcw, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import EventRoundController from '@/actions/App/Http/Controllers/Admin/EventRoundController';
@@ -11,16 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    echo,
-    joinSukienPresence,
-    subscribeSukienPublicChannel
-    
-    
-    
-    
-} from '@/echo';
-import type {PresenceMember, SukienOptionStat, SukienRoundPayload, SukienStatsPayload} from '@/echo';
+import { echo, joinSukienPresence, subscribeSukienPublicChannel } from '@/echo';
+import type { PresenceMember, SukienOptionStat, SukienRoundPayload, SukienStatsPayload } from '@/echo';
 import { formatVnd } from '@/lib/vnd';
 
 type Opt = { id: number; label: string; bg_color: string; text_color: string };
@@ -46,6 +38,7 @@ const props = defineProps<{
         slug: string;
         avatar_url: string | null;
         is_active: boolean;
+        round_session: number;
         auto_rollover_seconds: number | null;
     };
     options: Opt[];
@@ -299,6 +292,25 @@ function submitStart() {
 
 const endForm = useForm({});
 
+const resetSessionForm = useForm({});
+
+function submitResetSession() {
+    if (
+        !window.confirm(
+            'Reset đếm phiên?\n\n' +
+                'Lần mở phiên sau (không gõ tên) sẽ bắt đầu lại từ Phiên #1.\n' +
+                'Lịch sử phiên cũ vẫn giữ, chỉ tách kỳ đếm mới.',
+        )
+    ) {
+        return;
+    }
+
+    resetSessionForm.post(
+        EventRoomController.resetRoundSession.url({ event_room: props.eventRoom.id }),
+        { preserveScroll: true },
+    );
+}
+
 function submitEnd() {
     if (!liveOpenRound.value) {
         return;
@@ -457,6 +469,11 @@ function submitEnd() {
         <section v-else class="rounded-2xl border bg-card p-4">
             <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
+                Kỳ đếm hiện tại: <span class="font-mono font-semibold text-foreground">#{{ eventRoom.round_session }}</span>
+                — khi <strong>không nhập tên</strong>, tên mặc định sẽ là
+                <span class="whitespace-nowrap">Phiên #1, #2, …</span> trong kỳ này.
+            </p>
+            <p class="mt-1 text-xs text-muted-foreground">
                 Đặt tên phiên (tuỳ chọn) và thời lượng (giây). Khi hết giờ, phiên sẽ tự động kết thúc.
                 Bật <strong>Tự mở phiên tiếp theo khi hết giờ</strong> để các phiên xoay vòng liên tục —
                 bấm <em>Kết thúc phiên</em> để dừng vòng lặp.
@@ -499,10 +516,17 @@ function submitEnd() {
                 </span>
             </label>
 
-            <Button class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
-                :disabled="startForm.processing" @click="submitStart">
-                {{ startForm.processing ? 'Đang mở…' : 'Mở phiên mới' }}
-            </Button>
+            <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <Button class="w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"
+                    :disabled="startForm.processing" @click="submitStart">
+                    {{ startForm.processing ? 'Đang mở…' : 'Mở phiên mới' }}
+                </Button>
+                <Button type="button" variant="outline" class="w-full sm:w-auto"
+                    :disabled="resetSessionForm.processing || startForm.processing" @click="submitResetSession">
+                    <RotateCcw class="size-4" />
+                    {{ resetSessionForm.processing ? 'Đang cập nhật…' : 'Reset đếm phiên (mở từ #1)' }}
+                </Button>
+            </div>
         </section>
 
         <section class="rounded-2xl border bg-card p-3">

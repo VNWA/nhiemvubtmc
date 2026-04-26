@@ -49,11 +49,11 @@ const loadError = ref<string | null>(null);
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
     { value: 'all', label: 'Tất cả' },
-    { value: 'credit', label: 'Nạp' },
+    { value: 'credit', label: 'Nạp tiền' },
     { value: 'refund', label: 'Hoàn trả' },
+    { value: 'debit', label: 'Rút tiền' },
     { value: 'bet_place', label: 'Lệ phí' },
     { value: 'commission', label: 'Hoa hồng' },
-    { value: 'debit', label: 'Rút tiền' },
 ];
 
 function isRefundSource(source: string): boolean {
@@ -88,16 +88,16 @@ function txTitle(tx: Tx): string {
 
 function txIconClass(tx: Tx): string {
     if (tx.source === 'commission') {
-return 'bg-fuchsia-100 text-fuchsia-700';
-}
+        return 'bg-fuchsia-100 text-fuchsia-700';
+    }
 
     if (tx.source === 'bet_place') {
-return 'bg-blue-100 text-blue-700';
-}
+        return 'bg-blue-100 text-blue-700';
+    }
 
     if (isRefundSource(tx.source)) {
-return 'bg-amber-100 text-amber-800';
-}
+        return 'bg-amber-100 text-amber-800';
+    }
 
     if (tx.source === 'admin_credit' || (tx.direction === 'credit' && !isRefundSource(tx.source))) {
         return 'bg-emerald-100 text-emerald-700';
@@ -108,28 +108,28 @@ return 'bg-amber-100 text-amber-800';
 
 function txAmountClass(tx: Tx): string {
     if (tx.source === 'commission') {
-return 'text-fuchsia-700';
-}
+        return 'text-fuchsia-700';
+    }
 
     if (tx.source === 'bet_place') {
-return 'text-blue-700';
-}
+        return 'text-blue-700';
+    }
 
     if (isRefundSource(tx.source)) {
-return 'text-amber-800';
-}
+        return 'text-amber-800';
+    }
 
     if (tx.direction === 'credit') {
-return 'text-emerald-700';
-}
+        return 'text-emerald-700';
+    }
 
     return 'text-rose-700';
 }
 
 async function fetchPage(targetPage: number, replace: boolean) {
     if (loading.value) {
-return;
-}
+        return;
+    }
 
     loading.value = true;
     loadError.value = null;
@@ -139,8 +139,8 @@ return;
         const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
 
         if (!res.ok) {
-throw new Error('HTTP ' + res.status);
-}
+            throw new Error('HTTP ' + res.status);
+        }
 
         const json = (await res.json()) as { data: Tx[]; total: number; hasMore: boolean; page: number };
         items.value = replace ? json.data : items.value.concat(json.data);
@@ -160,8 +160,8 @@ function loadMore() {
 
 function setFilter(value: Filter) {
     if (filter.value === value) {
-return;
-}
+        return;
+    }
 
     filter.value = value;
     fetchPage(1, true);

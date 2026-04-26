@@ -105,8 +105,11 @@ class EventRoundService
                 ]);
             }
 
+            $session = (int) $lockedRoom->round_session;
+
             $nextNumber = (int) (EventRound::query()
                 ->where('event_room_id', $lockedRoom->getKey())
+                ->where('round_session', $session)
                 ->max('round_number') ?? 0) + 1;
 
             $name = $displayName !== null && trim($displayName) !== ''
@@ -120,6 +123,7 @@ class EventRoundService
 
             $round = EventRound::query()->create([
                 'event_room_id' => $lockedRoom->getKey(),
+                'round_session' => $session,
                 'round_number' => $nextNumber,
                 'name' => $name,
                 'status' => EventRoundStatus::Open,
@@ -152,6 +156,31 @@ class EventRoundService
         }
 
         return $round;
+    }
+
+    /**
+     * Tăng kỳ đếm phiên — phiên mới tới sẽ là Phiên #1 (khi không gõ tên tuỳ chỉnh).
+     * Chỉ gọi khi không còn phiên đang mở.
+     */
+    public function resetRoundSession(EventRoom $room, User $admin): void
+    {
+        if (! $admin->hasRole('admin')) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($room): void {
+            /** @var EventRoom $locked */
+            $locked = EventRoom::query()->whereKey($room->getKey())->lockForUpdate()->firstOrFail();
+
+            if (EventRound::query()->where('event_room_id', $locked->getKey())->where('status', EventRoundStatus::Open)->exists()) {
+                throw ValidationException::withMessages([
+                    'round' => ['Kết thúc phiên hiện tại trước khi reset đếm phiên.'],
+                ]);
+            }
+
+            $locked->round_session = (int) $locked->round_session + 1;
+            $locked->save();
+        });
     }
 
     public function endRound(EventRound $round, User $admin): void

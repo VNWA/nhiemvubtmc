@@ -14,6 +14,7 @@ class EventRound extends Model
      */
     protected $fillable = [
         'event_room_id',
+        'round_session',
         'round_number',
         'name',
         'status',
@@ -29,6 +30,7 @@ class EventRound extends Model
     protected function casts(): array
     {
         return [
+            'round_session' => 'integer',
             'status' => EventRoundStatus::class,
             'duration_seconds' => 'integer',
             'started_at' => 'datetime',

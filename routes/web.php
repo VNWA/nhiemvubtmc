@@ -117,6 +117,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::match(['put', 'patch'], '{event_room}', [EventRoomController::class, 'update'])->name('update');
                 Route::delete('{event_room}', [EventRoomController::class, 'destroy'])->name('destroy');
                 Route::post('{event_room}/rounds/start', [EventRoundController::class, 'start'])->name('rounds.start');
+                Route::post('{event_room}/rounds/reset-session', [EventRoomController::class, 'resetRoundSession'])->name('rounds.reset-session');
                 Route::post('{event_room}/rounds/{round}/end', [EventRoundController::class, 'end'])->name('rounds.end');
             });
         });

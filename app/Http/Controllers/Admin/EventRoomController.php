@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -147,7 +148,7 @@ class EventRoomController extends Controller
         $recentRounds = EventRound::query()
             ->where('event_room_id', $eventRoom->getKey())
             ->where('status', EventRoundStatus::Closed)
-            ->orderByDesc('round_number')
+            ->orderByDesc('id')
             ->limit(20)
             ->get()
             ->map(fn (EventRound $r) => [
@@ -164,6 +165,7 @@ class EventRoomController extends Controller
                 'slug' => $eventRoom->slug,
                 'avatar_url' => $eventRoom->avatar_url,
                 'is_active' => $eventRoom->is_active,
+                'round_session' => (int) $eventRoom->round_session,
                 'auto_rollover_seconds' => $eventRoom->auto_rollover_seconds === null
                     ? null
                     : (int) $eventRoom->auto_rollover_seconds,
@@ -195,6 +197,22 @@ class EventRoomController extends Controller
                 'maxSeconds' => EventRoundService::MAX_DURATION_SECONDS,
             ],
         ]);
+    }
+
+    public function resetRoundSession(Request $request, EventRoom $eventRoom, EventRoundService $rounds): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user === null) {
+            abort(403);
+        }
+
+        try {
+            $rounds->resetRoundSession($eventRoom, $user);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Đã reset đếm phiên. Phiên mới tới sẽ là Phiên #1 nếu bạn để trống tên.');
     }
 
     public function update(UpdateEventRoomRequest $request, EventRoom $eventRoom): RedirectResponse

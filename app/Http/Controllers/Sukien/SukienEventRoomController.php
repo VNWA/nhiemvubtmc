@@ -97,7 +97,7 @@ class SukienEventRoomController extends Controller
 
         $recentRoundsTotal = (clone $closedQuery)->count();
         $recentRounds = (clone $closedQuery)
-            ->orderByDesc('round_number')
+            ->orderByDesc('id')
             ->limit(self::ROUNDS_PER_PAGE)
             ->get()
             ->map(fn (EventRound $r) => $this->formatRound($r));
@@ -159,7 +159,7 @@ class SukienEventRoomController extends Controller
         $total = (clone $base)->count();
 
         $items = (clone $base)
-            ->orderByDesc('round_number')
+            ->orderByDesc('id')
             ->forPage($page, $perPage)
             ->get();
 

@@ -18,6 +18,7 @@ class EventRoom extends Model
         'avatar_path',
         'is_active',
         'auto_rollover_seconds',
+        'round_session',
     ];
 
     /**
@@ -28,6 +29,7 @@ class EventRoom extends Model
         return [
             'is_active' => 'boolean',
             'auto_rollover_seconds' => 'integer',
+            'round_session' => 'integer',
         ];
     }
 
