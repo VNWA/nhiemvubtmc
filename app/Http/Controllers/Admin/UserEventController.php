@@ -73,7 +73,15 @@ class UserEventController extends Controller
         $newRefund = (int) ($data['refund_vnd'] ?? 0);
         $newCommission = (int) ($data['commission_vnd'] ?? 0);
 
-        DB::transaction(function () use ($user, $bet, $newStatus, $newRefund, $newCommission, $request) {
+        // Resolve the human-friendly round number once so wallet history and
+        // flash messages refer to the round the user actually played in,
+        // not the internal bet primary key.
+        $roundNumber = (int) ($bet->eventRound?->round_number ?? 0);
+        $roomName = $bet->eventRound?->eventRoom?->name;
+        $roundLabel = $roundNumber > 0 ? '#'.$roundNumber : '#'.$bet->getKey();
+        $contextSuffix = $roomName !== null ? ' · '.$roomName : '';
+
+        DB::transaction(function () use ($user, $bet, $newStatus, $newRefund, $newCommission, $request, $roundLabel, $contextSuffix) {
             /** @var User $locked */
             $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
             $adminId = (int) ($request->user()?->getKey() ?? 0);
@@ -84,7 +92,7 @@ class UserEventController extends Controller
                 'refund_wallet_tx_id',
                 WalletSource::EventRefund,
                 $newRefund,
-                'Hoàn trả sự kiện · phiên #'.$bet->getKey(),
+                'Hoàn trả sự kiện · phiên '.$roundLabel.$contextSuffix,
                 $adminId,
             );
 
@@ -94,7 +102,7 @@ class UserEventController extends Controller
                 'commission_wallet_tx_id',
                 WalletSource::Commission,
                 $newCommission,
-                'Hoa hồng sự kiện · phiên #'.$bet->getKey(),
+                'Hoa hồng sự kiện · phiên '.$roundLabel.$contextSuffix,
                 $adminId,
             );
 
@@ -104,7 +112,7 @@ class UserEventController extends Controller
             $bet->save();
         });
 
-        return back()->with('success', 'Đã cập nhật phiên #'.$bet->getKey().'.');
+        return back()->with('success', 'Đã cập nhật phiên '.$roundLabel.'.');
     }
 
     /**

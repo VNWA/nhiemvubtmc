@@ -136,8 +136,9 @@ defineOptions({
 
                         </p>
                         <p class="text-[11px] text-muted-foreground">
-                            🕒 Phiên #{{ bet.id }} · {{ formatDate(bet.created_at) }}
-
+                            🕒 Phiên #{{ bet.round?.number ?? '—' }}
+                            <span v-if="bet.round?.name" class="text-stone-400">· {{ bet.round.name }}</span>
+                            · {{ formatDate(bet.created_at) }}
                         </p>
                         <p class="text-xs">
                             <span class="text-muted-foreground">Kết quả hiện tại:</span>

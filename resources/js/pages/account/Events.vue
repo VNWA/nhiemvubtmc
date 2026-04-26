@@ -94,7 +94,9 @@ function formatSigned(amount: number): string {
 
                 <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-500">
                     <span class="inline-flex items-center gap-1">
-                        <span aria-hidden="true">🕒</span> Phiên #{{ bet.id }}
+                        <span aria-hidden="true">🕒</span>
+                        Phiên #{{ bet.round_number || '—' }}
+                        <span v-if="bet.round_name" class="text-stone-400">· {{ bet.round_name }}</span>
                     </span>
                 </div>
 
