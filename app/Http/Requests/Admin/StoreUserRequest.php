@@ -30,15 +30,4 @@ class StoreUserRequest extends FormRequest
             'created_by' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'username.unique' => __('This username is already taken.'),
-            'username.alpha_dash' => __('The username may only contain letters, numbers, dashes, and underscores.'),
-        ];
-    }
 }

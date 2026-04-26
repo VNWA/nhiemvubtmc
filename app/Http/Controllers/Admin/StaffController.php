@@ -107,6 +107,32 @@ class StaffController extends Controller
         ]);
     }
 
+    public function clearTwoFactor(Request $request, User $staff): RedirectResponse
+    {
+        $this->ensureAdmin($request);
+        $this->ensureStaff($staff);
+
+        if ($staff->two_factor_confirmed_at === null
+            && $staff->two_factor_secret === null
+            && $staff->two_factor_recovery_codes === null) {
+            return back()->with('error', 'Nhân viên này chưa cấu hình 2FA hoặc đã gỡ trước đó.');
+        }
+
+        $staff->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+
+        ActivityLogger::log(
+            'user.2fa_cleared',
+            (int) $staff->getKey(),
+            sprintf('Gỡ 2FA cho nhân viên %s', $staff->name),
+        );
+
+        return back()->with('success', 'Đã gỡ xác thực hai bước (2FA) cho nhân viên.');
+    }
+
     public function update(UpdateStaffRequest $request, User $staff): RedirectResponse
     {
         $this->ensureStaff($staff);
@@ -232,6 +258,10 @@ class StaffController extends Controller
     {
         $status = $user->status instanceof UserStatus ? $user->status : UserStatus::Active;
 
+        $hasTwoFactor = $user->two_factor_confirmed_at !== null
+            || $user->two_factor_secret !== null
+            || $user->two_factor_recovery_codes !== null;
+
         return [
             'id' => (int) $user->getKey(),
             'name' => $user->name,
@@ -246,6 +276,7 @@ class StaffController extends Controller
             'last_login_ip' => $user->last_login_ip,
             'created_at' => $user->created_at?->formatVn(),
             'password' => $includePassword ? $user->password_hint : null,
+            'has_two_factor' => $hasTwoFactor,
         ];
     }
 }

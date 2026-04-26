@@ -6,7 +6,6 @@ use App\Enums\EventBetStatus;
 use App\Enums\WalletDirection;
 use App\Enums\WalletSource;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Client\UpdateAccountRequest;
 use App\Http\Requests\Client\UpdatePasswordRequest;
 use App\Models\EventBet;
 use App\Models\User;
@@ -106,17 +105,6 @@ class AccountController extends Controller
         return Inertia::render('account/Profile', [
             'profile' => $this->profilePayload($user),
         ]);
-    }
-
-    public function updateProfile(UpdateAccountRequest $request): RedirectResponse
-    {
-        $user = $request->user();
-        abort_if($user === null, 403);
-
-        $user->fill($request->validated());
-        $user->save();
-
-        return to_route('account.profile.edit')->with('success', 'Đã cập nhật hồ sơ.');
     }
 
     public function editPassword(Request $request): Response

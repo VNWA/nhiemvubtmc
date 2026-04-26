@@ -31,15 +31,4 @@ class UpdateStaffRequest extends FormRequest
             'password' => ['nullable', 'string', 'min:1', 'confirmed'],
         ];
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'username.unique' => __('This username is already taken.'),
-            'username.alpha_dash' => __('The username may only contain letters, numbers, dashes, and underscores.'),
-        ];
-    }
 }

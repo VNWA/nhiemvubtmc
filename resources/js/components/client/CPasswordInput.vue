@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Eye, EyeOff } from 'lucide-vue-next';
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, watch } from 'vue';
 import CInput from './CInput.vue';
 
 defineOptions({ inheritAttrs: false });
 
-defineProps<{
+const props = defineProps<{
     modelValue?: string;
     ariaInvalid?: boolean;
 }>();
@@ -13,6 +13,29 @@ defineProps<{
 const emit = defineEmits<{
     (e: 'update:modelValue', value: string): void;
 }>();
+
+/**
+ * Bộ đệm nội bộ: khi trang dùng input chỉ gắn `name` (không v-model) thì
+ * `modelValue` từ cha luôn undefined — nếu gán thẳng `modelValue ?? ''` xuống
+ * CInput, mỗi lần bật/tắt “hiện mật khẩu” re-render sẽ reset về rỗng.
+ * Có v-model: đồng bộ từ props vào bộ đệm khi phía cha đổi giá trị.
+ */
+const inner = ref('');
+
+watch(
+    () => props.modelValue,
+    (v) => {
+        if (v !== undefined) {
+            inner.value = v == null ? '' : String(v);
+        }
+    },
+    { immediate: true },
+);
+
+function onInput(v: string) {
+    inner.value = v;
+    emit('update:modelValue', v);
+}
 
 const showPassword = ref(false);
 const inputRef = useTemplateRef<InstanceType<typeof CInput>>('inputRef');
@@ -28,10 +51,10 @@ defineExpose({
             ref="inputRef"
             :type="showPassword ? 'text' : 'password'"
             has-trailing
-            :model-value="modelValue ?? ''"
+            :model-value="inner"
             :aria-invalid="ariaInvalid"
             v-bind="$attrs"
-            @update:model-value="(v) => emit('update:modelValue', v as string)"
+            @update:model-value="onInput"
         />
         <button
             type="button"

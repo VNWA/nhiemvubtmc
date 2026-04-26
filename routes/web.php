@@ -33,7 +33,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('tai-khoan')->name('account.')->controller(AccountController::class)->group(function () {
         Route::get('/', 'show')->name('show');
         Route::get('ho-so', 'editProfile')->name('profile.edit');
-        Route::patch('ho-so', 'updateProfile')->name('profile.update');
         Route::get('mat-khau', 'editPassword')->name('password.edit');
         Route::put('mat-khau', 'updatePassword')->middleware('throttle:6,1')->name('password.update');
         Route::get('ngan-hang', 'editBank')->name('bank.edit');
@@ -95,6 +94,7 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::post('/', 'store')->name('store');
                 Route::get('{staff}/edit', 'edit')->name('edit');
                 Route::get('{staff}/password', 'password')->name('password');
+                Route::post('{staff}/two-factor', 'clearTwoFactor')->name('two-factor.clear');
                 Route::match(['put', 'patch'], '{staff}', 'update')->name('update');
                 Route::post('{staff}/lock', 'toggleLock')->name('lock');
                 Route::delete('{staff}', 'destroy')->name('destroy');

@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -36,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->registerDateMacros();
         date_default_timezone_set(config('app.timezone'));
+        Lang::setLocale(config('app.locale'));
+        Carbon::setLocale(config('app.locale'));
+        CarbonImmutable::setLocale(config('app.locale'));
         // Note: UpdateUserOnLogin is auto-registered by Laravel via the
         // Login type-hint on its handle() method — do NOT re-register it
         // here, otherwise the user.login activity log fires twice.

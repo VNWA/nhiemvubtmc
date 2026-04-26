@@ -58,16 +58,4 @@ class UpdateUserRequest extends FormRequest
             'bank_account_name' => ['nullable', 'string', 'max:160'],
         ];
     }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'username.unique' => __('This username is already taken.'),
-            'username.alpha_dash' => __('The username may only contain letters, numbers, dashes, and underscores.'),
-            'bank_account_number.regex' => 'Số tài khoản chỉ được chứa chữ số.',
-        ];
-    }
 }
