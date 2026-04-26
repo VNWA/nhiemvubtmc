@@ -3,7 +3,10 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { Trash2 } from 'lucide-vue-next';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
+import Pagination from '@/components/Pagination.vue';
+import type { PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 
 type Row = {
@@ -15,8 +18,19 @@ type Row = {
     options_count: number;
 };
 
+type Paginator = {
+    data: Row[];
+    current_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    per_page: number;
+    last_page: number;
+    links: PaginationLink[];
+};
+
 defineProps<{
-    rooms: Row[];
+    rooms: Paginator;
 }>();
 
 function confirmDelete(name: string): boolean {
@@ -42,15 +56,23 @@ defineOptions({
         <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <Heading title="Phòng sự kiện"
                 description="Tạo phòng, cấu hình các mặt kết quả, điều hành phiên tại trang phòng" />
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminListReloadButton :only="['rooms']" />
                 <Button as-child>
                     <Link :href="EventRoomController.create.url()">Tạo phòng</Link>
                 </Button>
             </div>
         </div>
 
-        <ul class="space-y-2">
-            <li v-for="r in rooms" :key="r.id"
+        <div
+            v-if="rooms.data.length === 0"
+            class="rounded-lg border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground"
+        >
+            Chưa có phòng nào. Bấm &quot;Tạo phòng&quot; để bắt đầu.
+        </div>
+
+        <ul v-else class="space-y-2">
+            <li v-for="r in rooms.data" :key="r.id"
                 class="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-center gap-3">
                     <div
@@ -91,5 +113,12 @@ defineOptions({
                 </div>
             </li>
         </ul>
+
+        <Pagination
+            v-if="rooms.total > 0"
+            :meta="rooms"
+            :only="['rooms']"
+            item-label="phòng"
+        />
     </div>
 </template>

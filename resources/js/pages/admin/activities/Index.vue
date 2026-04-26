@@ -3,8 +3,10 @@ import { Head, router } from '@inertiajs/vue3';
 import { ScrollText, Search, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import ActivityLogController from '@/actions/App/Http/Controllers/Admin/ActivityLogController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
-import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+import type {PaginationLink} from '@/components/Pagination.vue';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -63,10 +65,23 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
-    if (cleaned !== '') params.q = cleaned;
-    if (actionFilter.value && actionFilter.value !== '__all') params.action = actionFilter.value;
-    if (dateFrom.value) params.date_from = dateFrom.value;
-    if (dateTo.value) params.date_to = dateTo.value;
+
+    if (cleaned !== '') {
+params.q = cleaned;
+}
+
+    if (actionFilter.value && actionFilter.value !== '__all') {
+params.action = actionFilter.value;
+}
+
+    if (dateFrom.value) {
+params.date_from = dateFrom.value;
+}
+
+    if (dateTo.value) {
+params.date_to = dateTo.value;
+}
+
     router.get(ActivityLogController.index.url(), params, {
         preserveState: true,
         preserveScroll: true,
@@ -76,7 +91,10 @@ function pushFilters() {
 }
 
 watch(search, () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    if (debounceTimer) {
+clearTimeout(debounceTimer);
+}
+
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
@@ -97,15 +115,19 @@ function actionBadgeClass(action: string): string {
     if (action.startsWith('user.locked') || action.startsWith('user.deleted')) {
         return 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300';
     }
+
     if (action.startsWith('user.unlocked')) {
         return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
     }
+
     if (action.startsWith('wallet.')) {
         return 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300';
     }
+
     if (action.startsWith('user.created')) {
         return 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300';
     }
+
     return 'bg-secondary text-secondary-foreground';
 }
 
@@ -121,8 +143,11 @@ defineOptions({
     <Head title="Lịch sử thao tác" />
 
     <div class="flex flex-col gap-5 p-4">
-        <Heading variant="small" title="Lịch sử thao tác"
-            description="Toàn bộ thao tác do admin / nhân viên / hệ thống thực hiện." />
+        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <Heading variant="small" title="Lịch sử thao tác"
+                description="Toàn bộ thao tác do admin / nhân viên / hệ thống thực hiện." />
+            <AdminListReloadButton :only="['logs', 'filters', 'actionOptions']" />
+        </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
             <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -221,7 +246,7 @@ defineOptions({
                 </table>
             </div>
 
-            <Pagination :meta="logs" :only="['logs', 'filters']" item-label="bản ghi" />
+            <Pagination :meta="logs" :only="['logs', 'filters', 'actionOptions']" item-label="bản ghi" />
         </div>
     </div>
 </template>

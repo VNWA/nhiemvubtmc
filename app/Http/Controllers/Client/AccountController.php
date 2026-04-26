@@ -119,8 +119,7 @@ class AccountController extends Controller
         $user = $request->user();
         abort_if($user === null, 403);
 
-        $user->password = $request->validated('password');
-        $user->save();
+        $user->syncPasswordAndHintFromPlain($request->validated('password'));
 
         return to_route('account.password.edit')->with('success', 'Đã đổi mật khẩu.');
     }

@@ -463,7 +463,7 @@ async function loadMoreRounds() {
 
     <Head :title="eventRoom.name" />
 
-    <div class="flex flex-col gap-2 px-3 pb-6 pt-2">
+    <div class="flex flex-col gap-2 px-2 pb-6 pt-2">
         <header
             class="flex items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2 shadow-sm">
             <div class="flex min-w-0 items-center gap-2">
@@ -498,7 +498,7 @@ async function loadMoreRounds() {
         </div>
 
         <section v-if="liveOpenRound"
-            class="flex items-center justify-between gap-2 rounded-xl border-2 border-amber-300 bg-linear-to-r from-amber-50 to-amber-100 px-3 py-2 shadow-sm">
+            class="flex items-center justify-between gap-2 rounded-xl border-2 border-amber-300 bg-linear-to-r from-amber-50 to-amber-100 px-2 py-2 shadow-sm">
             <div class="flex min-w-0 items-center gap-2">
                 <div
                     class="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-200 text-sm font-bold text-amber-900">
@@ -521,44 +521,46 @@ async function loadMoreRounds() {
             Chưa có phiên nào đang mở. Vui lòng đợi phiên mới.
         </section>
 
-        <section v-if="liveOpenRound && !isAdmin" class="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
+        <section v-if="liveOpenRound && !isAdmin" class="rounded-xl border border-stone-200 bg-white p-2 shadow-sm">
             <div class="space-y-2">
-                <div v-if="!hasPlacedBet" class="flex items-center justify-between gap-2">
-                    <p class="text-xs text-stone-500">
+                <div v-if="!hasPlacedBet"
+                    class="flex flex-col gap-1.5 min-[400px]:flex-row min-[400px]:items-center min-[400px]:justify-between">
+                    <p class="min-w-0 text-xs leading-snug text-stone-500">
                         Tick các mục muốn tham gia (có thể chọn tất cả) rồi nhập số tiền.
                     </p>
                     <button type="button"
-                        class="text-[11px] font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800"
+                        class="shrink-0 self-start text-[11px] font-semibold text-amber-700 underline underline-offset-2 min-[400px]:self-auto hover:text-amber-800"
                         @click="selectAllAvailable">
                         Chọn tất cả
                     </button>
                 </div>
 
-                <ul class="grid grid-cols-2 gap-1.5">
-                    <li v-for="o in options" :key="o.id">
-                        <button type="button" class="option-chip w-full" :class="{
+                <ul class="grid grid-cols-1 gap-1.5 min-[360px]:grid-cols-2">
+                    <li v-for="o in options" :key="o.id" class="min-w-0">
+                        <button type="button" class="option-chip w-full min-w-0" :class="{
                             'option-chip-placed': hasPlacedBet,
                             'option-chip-selected': !hasPlacedBet && isSelected(o.id),
-                        }" :disabled="hasPlacedBet" @click="toggleOption(o.id)">
-                            <span
-                                class="inline-flex shrink-0 items-center justify-center rounded px-2 py-1 text-xs font-bold min-w-14"
-                                :style="{ backgroundColor: o.bg_color, color: o.text_color }">
-                                {{ o.label }}
+                        }" :disabled="hasPlacedBet" :title="o.label" @click="toggleOption(o.id)">
+                            <span class="option-chip-label"
+                                :style="{ backgroundColor: o.bg_color, color: o.text_color }">{{ o.label }}
+
                             </span>
-                            <template v-if="hasPlacedBet">
-                                <span class="ml-auto inline-flex size-5 items-center justify-center rounded border-2"
-                                    :class="liveUserBet?.option_ids.includes(o.id)
-                                        ? 'border-emerald-500 bg-emerald-500 text-white'
-                                        : 'border-stone-200 bg-stone-50'">
-                                    <Check v-if="liveUserBet?.option_ids.includes(o.id)" class="size-3.5" />
-                                </span>
-                            </template>
-                            <template v-else>
-                                <span class="ml-auto inline-flex size-5 items-center justify-center rounded border-2"
-                                    :class="isSelected(o.id) ? 'border-amber-600 bg-amber-600 text-white' : 'border-stone-300 bg-white'">
-                                    <Check v-if="isSelected(o.id)" class="size-3.5" />
-                                </span>
-                            </template>
+                            <span class="option-chip-check">
+                                <template v-if="hasPlacedBet">
+                                    <span class="inline-flex size-5 items-center justify-center rounded border-2"
+                                        :class="liveUserBet?.option_ids.includes(o.id)
+                                            ? 'border-emerald-500 bg-emerald-500 text-white'
+                                            : 'border-stone-200 bg-stone-50'">
+                                        <Check v-if="liveUserBet?.option_ids.includes(o.id)" class="size-3.5" />
+                                    </span>
+                                </template>
+                                <template v-else>
+                                    <span class="inline-flex size-5 items-center justify-center rounded border-2"
+                                        :class="isSelected(o.id) ? 'border-amber-600 bg-amber-600 text-white' : 'border-stone-300 bg-white'">
+                                        <Check v-if="isSelected(o.id)" class="size-3.5" />
+                                    </span>
+                                </template>
+                            </span>
                         </button>
                     </li>
                 </ul>
@@ -722,16 +724,53 @@ async function loadMoreRounds() {
 }
 
 .option-chip {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.625rem;
+    justify-content: space-between;
+    gap: 0.375rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: 0.375rem 0.5rem;
     border: 2px solid rgb(231 229 228);
     border-radius: 0.625rem;
     background-color: white;
+    text-align: left;
     transition: border-color 150ms ease, background-color 150ms ease, transform 100ms ease;
     cursor: pointer;
     user-select: none;
+}
+
+.option-chip-label {
+    min-width: 0;
+    flex: 1 1 0;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@media (min-width: 400px) {
+    .option-chip-label {
+        font-size: 0.75rem;
+    }
+}
+
+.option-chip-check {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    align-self: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
 .option-chip:hover:not(:disabled) {

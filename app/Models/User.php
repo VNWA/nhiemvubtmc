@@ -89,6 +89,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Store a new login password (hashed) and keep the encrypted hint in sync so admin/staff "xem mật khẩu" reflects self-service changes.
+     */
+    public function syncPasswordAndHintFromPlain(string $plain): void
+    {
+        $this->forceFill([
+            'password' => $plain,
+            'password_hint' => $plain,
+        ])->save();
+    }
+
+    /**
      * Plain password kept encrypted at rest so admins/staff can reveal it.
      */
     protected function passwordHint(): Attribute

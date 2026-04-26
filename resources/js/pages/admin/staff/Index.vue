@@ -14,8 +14,10 @@ import {
 } from 'lucide-vue-next';
 import { computed, reactive, ref, watch } from 'vue';
 import StaffController from '@/actions/App/Http/Controllers/Admin/StaffController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
-import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+import type {PaginationLink} from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -68,10 +70,21 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
-    if (cleaned) params.q = cleaned;
+
+    if (cleaned) {
+params.q = cleaned;
+}
+
     const ipClean = ipFilter.value.trim();
-    if (ipClean) params.ip = ipClean;
-    if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
+
+    if (ipClean) {
+params.ip = ipClean;
+}
+
+    if (statusFilter.value && statusFilter.value !== '__all') {
+params.status = statusFilter.value;
+}
+
     router.get(StaffController.index.url(), params, {
         preserveState: true,
         preserveScroll: true,
@@ -81,13 +94,19 @@ function pushFilters() {
 }
 
 watch(search, () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    if (debounceTimer) {
+clearTimeout(debounceTimer);
+}
+
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
 let ipDebounce: ReturnType<typeof setTimeout> | null = null;
 watch(ipFilter, () => {
-    if (ipDebounce) clearTimeout(ipDebounce);
+    if (ipDebounce) {
+clearTimeout(ipDebounce);
+}
+
     ipDebounce = setTimeout(pushFilters, 300);
 });
 
@@ -106,13 +125,19 @@ const passwordVisible = reactive<Record<number, boolean>>({});
 async function togglePassword(row: Row) {
     if (passwordVisible[row.id]) {
         passwordVisible[row.id] = false;
+        delete passwordCache[row.id];
+
         return;
     }
+
     if (passwordCache[row.id] !== undefined) {
         passwordVisible[row.id] = true;
+
         return;
     }
+
     passwordLoading[row.id] = true;
+
     try {
         const res = await fetch(StaffController.password.url({ staff: row.id }), {
             headers: { Accept: 'application/json' },
@@ -128,7 +153,10 @@ async function togglePassword(row: Row) {
 }
 
 function lockPrompt(row: Row): string | null {
-    if (row.status === 'locked') return null;
+    if (row.status === 'locked') {
+return null;
+}
+
     return window.prompt(`Lý do khóa nhân viên "${row.name}" (có thể bỏ trống):`, '') ?? '__cancel__';
 }
 
@@ -152,12 +180,15 @@ defineOptions({
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" title="Nhân viên" description="Quản lý các tài khoản nhân viên trong hệ thống." />
-            <Button as-child>
-                <Link :href="StaffController.create.url()">
-                    <UserPlus class="size-4" />
-                    Thêm nhân viên
-                </Link>
-            </Button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminListReloadButton :only="['staff', 'filters', 'statusOptions']" />
+                <Button as-child>
+                    <Link :href="StaffController.create.url()">
+                        <UserPlus class="size-4" />
+                        Thêm nhân viên
+                    </Link>
+                </Button>
+            </div>
         </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\EventRoom;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -218,5 +219,43 @@ class UserManagementTest extends TestCase
             'actor_id' => $admin->id,
             'action' => 'user.deleted',
         ]);
+    }
+
+    public function test_admin_deposit_page_returns_paginated_wallet_transactions(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $customer = User::factory()->create();
+        $customer->assignRole('user');
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.deposit', $customer))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('transactions.data')
+                ->where('transactions.total', 0)
+                ->where('transactions.current_page', 1)
+            );
+    }
+
+    public function test_admin_sukien_rooms_index_returns_paginated_rooms(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        EventRoom::query()->create([
+            'name' => 'Test Room',
+            'slug' => 'test-room-'.uniqid(),
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.sukien-rooms.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('rooms.data', 1)
+                ->where('rooms.total', 1)
+            );
     }
 }

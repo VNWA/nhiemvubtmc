@@ -259,16 +259,18 @@ class UserController extends Controller
         ]);
     }
 
-    public function deposit(User $user): Response
+    public function deposit(Request $request, User $user): Response
     {
         $this->authorize('update', $user);
+
+        $perPage = max(5, min((int) $request->integer('per_page', 20), 100));
 
         $transactions = WalletTransaction::query()
             ->where('user_id', $user->getKey())
             ->orderByDesc('id')
-            ->limit(100)
-            ->get()
-            ->map(fn (WalletTransaction $t) => [
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (WalletTransaction $t) => [
                 'id' => $t->id,
                 'direction' => $t->direction->value,
                 'source' => $t->source->value,
@@ -277,9 +279,7 @@ class UserController extends Controller
                 'balance_after_vnd' => (int) $t->balance_after_vnd,
                 'description' => $t->description,
                 'created_at' => $t->created_at?->formatVn(),
-            ])
-            ->values()
-            ->all();
+            ]);
 
         $totals = WalletTransaction::query()
             ->where('user_id', $user->getKey())

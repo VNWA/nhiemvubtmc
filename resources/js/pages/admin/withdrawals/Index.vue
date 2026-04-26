@@ -3,8 +3,10 @@ import { Head, router } from '@inertiajs/vue3';
 import { Ban, Check, ClipboardList, X } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import WithdrawalController from '@/actions/App/Http/Controllers/Admin/WithdrawalController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
-import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+import type {PaginationLink} from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -81,8 +83,9 @@ function toggleNote(id: number) {
 }
 
 function approve(row: Item) {
-    if (!confirm(`Duyệt rút ${formatVnd(row.amount_vnd)} cho ${row.user?.name ?? 'user'}?`))
-        return;
+    if (!confirm(`Duyệt rút ${formatVnd(row.amount_vnd)} cho ${row.user?.name ?? 'user'}?`)) {
+return;
+}
 
     router.post(
         WithdrawalController.approve.url({ withdrawal: row.id }),
@@ -101,12 +104,15 @@ function reject(row: Item) {
     if (activeRowId.value !== row.id) {
         activeRowId.value = row.id;
         noteDraft.value = '';
+
         return;
     }
 
     const note = noteDraft.value.trim();
+
     if (!note) {
         alert('Vui lòng nhập lý do từ chối.');
+
         return;
     }
 
@@ -154,10 +160,15 @@ defineOptions({
     <Head title="Yêu cầu rút tiền" />
 
     <div class="flex flex-col gap-5 p-4">
-        <Heading
-            title="Yêu cầu rút tiền"
-            description="Duyệt hoặc từ chối yêu cầu rút tiền của người dùng. Khi duyệt, hệ thống tự trừ số dư tương ứng."
-        />
+        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <Heading
+                title="Yêu cầu rút tiền"
+                description="Duyệt hoặc từ chối yêu cầu rút tiền của người dùng. Khi duyệt, hệ thống tự trừ số dư tương ứng."
+            />
+            <AdminListReloadButton
+                :only="['items', 'filter', 'summary', 'statusOptions']"
+            />
+        </div>
 
         <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div
@@ -379,7 +390,11 @@ defineOptions({
                 </table>
             </div>
 
-            <Pagination :meta="items" item-label="yêu cầu" />
+            <Pagination
+                :meta="items"
+                :only="['items', 'filter', 'summary', 'statusOptions']"
+                item-label="yêu cầu"
+            />
         </section>
     </div>
 </template>

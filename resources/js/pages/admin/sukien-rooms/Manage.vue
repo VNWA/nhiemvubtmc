@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ExternalLink, Pencil, Power, PowerOff, Repeat, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import EventRoomController from '@/actions/App/Http/Controllers/Admin/EventRoomController';
 import EventRoundController from '@/actions/App/Http/Controllers/Admin/EventRoundController';
 import SukienEventRoomController from '@/actions/App/Http/Controllers/Sukien/SukienEventRoomController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,16 +14,14 @@ import { Label } from '@/components/ui/label';
 import {
     echo,
     joinSukienPresence,
-    subscribeSukienPublicChannel,
-    type PresenceMember,
-    type SukienOptionStat,
-    type SukienRoundPayload,
-    type SukienStatsPayload,
+    subscribeSukienPublicChannel
+    
+    
+    
+    
 } from '@/echo';
+import type {PresenceMember, SukienOptionStat, SukienRoundPayload, SukienStatsPayload} from '@/echo';
 import { formatVnd } from '@/lib/vnd';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ExternalLink, Pencil, Power, PowerOff, Repeat, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 type Opt = { id: number; label: string; bg_color: string; text_color: string };
 type OpenRoundT = {
@@ -84,21 +86,27 @@ function syncPresenceList() {
 
 const remainingMs = computed(() => {
     const end = liveOpenRound.value?.auto_end_at;
+
     if (!end) {
         return null;
     }
+
     const diff = new Date(end).getTime() - now.value;
+
     return diff > 0 ? diff : 0;
 });
 
 const remainingLabel = computed(() => {
     const ms = remainingMs.value;
+
     if (ms === null) {
         return null;
     }
+
     const total = Math.ceil(ms / 1000);
     const m = Math.floor(total / 60);
     const s = total % 60;
+
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 });
 
@@ -108,20 +116,25 @@ const timerExpired = computed(
 
 const timerColorClass = computed(() => {
     const ms = remainingMs.value;
+
     if (ms === null) {
         return 'bg-stone-100 text-stone-700';
     }
+
     if (ms <= 5_000) {
         return 'bg-red-100 text-red-700';
     }
+
     if (ms <= 15_000) {
         return 'bg-amber-100 text-amber-800';
     }
+
     return 'bg-emerald-100 text-emerald-800';
 });
 
 const ratios = computed(() => {
     const total = liveTotalVnd.value;
+
     return props.options.map((o) => {
         const stat = livePerOption.value.find((s) => s.optionId === o.id) ?? {
             optionId: o.id,
@@ -129,6 +142,7 @@ const ratios = computed(() => {
             totalAmountVnd: 0,
         };
         const pct = total > 0 ? (stat.totalAmountVnd / total) * 100 : 0;
+
         return {
             ...o,
             betsCount: stat.betsCount,
@@ -142,9 +156,11 @@ watch(timerExpired, (expired) => {
     if (!expired) {
         return;
     }
+
     if (endReloadHandle) {
         clearTimeout(endReloadHandle);
     }
+
     // Wait long enough for the AutoEndExpiredRoundJob to close the round
     // AND (optionally) open the next rollover round. Reload `eventRoom`
     // too so the rollover badge stays in sync.
@@ -163,6 +179,7 @@ onMounted(() => {
             if (p.eventRoomId !== props.eventRoom.id) {
                 return;
             }
+
             liveOpenRound.value = {
                 id: p.eventRoundId,
                 round_number: p.roundNumber,
@@ -189,6 +206,7 @@ onMounted(() => {
             if (p.eventRoomId !== props.eventRoom.id) {
                 return;
             }
+
             if (liveOpenRound.value && p.eventRoundId === liveOpenRound.value.id) {
                 liveBetsCount.value = p.betsCount;
                 liveTotalVnd.value = p.totalAmountVnd;
@@ -205,6 +223,7 @@ onMounted(() => {
             if (!presenceMembers.some((u) => u.id === m.id)) {
                 presenceMembers.push(m);
             }
+
             syncPresenceList();
         },
         onLeaving: (m) => {
@@ -217,9 +236,11 @@ onMounted(() => {
 onUnmounted(() => {
     unsubPublic?.();
     unsubPresence?.();
+
     if (tickHandle) {
         clearInterval(tickHandle);
     }
+
     if (endReloadHandle) {
         clearTimeout(endReloadHandle);
     }
@@ -261,6 +282,7 @@ function submitStart() {
                 minSeconds,
                 Math.min(maxSeconds, Math.round(Number(data.duration_seconds) || 0)),
             );
+
             return {
                 name: data.name,
                 duration_seconds: seconds,
@@ -281,9 +303,11 @@ function submitEnd() {
     if (!liveOpenRound.value) {
         return;
     }
+
     if (!confirm('Kết thúc phiên này ngay?')) {
         return;
     }
+
     endForm.post(
         EventRoundController.end.url({
             event_room: props.eventRoom.id,
@@ -318,6 +342,9 @@ function submitEnd() {
                 </span>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                <AdminListReloadButton
+                    :only="['eventRoom', 'options', 'openRound', 'betsStats', 'recentRounds', 'durationLimits']"
+                />
                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" :class="rtConnected
                     ? 'bg-emerald-100 text-emerald-800'
                     : 'bg-stone-200 text-stone-600'

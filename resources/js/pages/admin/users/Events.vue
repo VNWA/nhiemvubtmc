@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { Form, Head, Link } from '@inertiajs/vue3';
+import { ArrowLeft, CalendarHeart } from 'lucide-vue-next';
+import { reactive, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import CurrencyInput from '@/components/CurrencyInput.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
-import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+import type { PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,9 +21,6 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { formatVnd } from '@/lib/vnd';
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { ArrowLeft, CalendarHeart } from 'lucide-vue-next';
-import { reactive } from 'vue';
 
 type Bet = {
     id: number;
@@ -60,17 +62,36 @@ type DraftMap = Record<
 
 const drafts = reactive<DraftMap>({});
 
-for (const bet of props.bets.data) {
-    drafts[bet.id] = {
-        status: bet.status,
-        refund_vnd: bet.refund_vnd,
-        commission_vnd: bet.commission_vnd,
-    };
+function syncDrafts() {
+    for (const k of Object.keys(drafts)) {
+        delete drafts[Number(k)];
+    }
+
+    for (const bet of props.bets.data) {
+        drafts[bet.id] = {
+            status: bet.status,
+            refund_vnd: bet.refund_vnd,
+            commission_vnd: bet.commission_vnd,
+        };
+    }
 }
+
+syncDrafts();
+watch(
+    () => props.bets.data,
+    () => {
+        syncDrafts();
+    },
+    { deep: true },
+);
 
 function netForDraft(bet: Bet): number {
     const draft = drafts[bet.id];
-    if (!draft) return bet.net_vnd;
+
+    if (!draft) {
+        return bet.net_vnd;
+    }
+
     return draft.refund_vnd + draft.commission_vnd - bet.amount_vnd;
 }
 
@@ -92,7 +113,8 @@ defineOptions({
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" :title="`Sự kiện của ${user.name}`"
                 :description="`@${user.username} · Số dư: ${formatVnd(user.balance_vnd)}`" />
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminListReloadButton :only="['bets', 'user', 'statusOptions']" />
                 <Button variant="secondary" as-child>
                     <Link :href="UserController.index.url()">
                         <ArrowLeft class="size-4" />
@@ -186,7 +208,12 @@ defineOptions({
                 </li>
             </ul>
 
-            <Pagination v-if="bets.last_page > 1" :meta="bets" item-label="phiên" />
+            <Pagination
+                v-if="bets.total > 0"
+                :meta="bets"
+                :only="['bets', 'user', 'statusOptions']"
+                item-label="phiên"
+            />
         </div>
     </div>
 </template>

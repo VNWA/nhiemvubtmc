@@ -3,9 +3,12 @@ import { Form, Head, Link } from '@inertiajs/vue3';
 import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Coins, Gift, RotateCcw, Wallet } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import CurrencyInput from '@/components/CurrencyInput.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import Pagination from '@/components/Pagination.vue';
+import type { PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +26,17 @@ type Txn = {
     created_at: string | null;
 };
 
+type Paginator = {
+    data: Txn[];
+    current_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    per_page: number;
+    last_page: number;
+    links: PaginationLink[];
+};
+
 const props = defineProps<{
     user: {
         id: number;
@@ -32,7 +46,7 @@ const props = defineProps<{
         balance_vnd: number;
         role: string;
     };
-    transactions: Txn[];
+    transactions: Paginator;
     summary: {
         credit_total: number;
         credit_count: number;
@@ -71,36 +85,61 @@ function resetAdjust() {
 
 watch(adjustOperation, (next, prev) => {
     const prevDefault = DEFAULT_NOTE[prev];
+
     if (!adjustNote.value || adjustNote.value === prevDefault) {
         adjustNote.value = DEFAULT_NOTE[next];
     }
 });
 
 const submitLabel = computed(() => {
-    if (adjustOperation.value === 'credit') return 'Xác nhận nạp';
-    if (adjustOperation.value === 'debit') return 'Xác nhận trừ';
+    if (adjustOperation.value === 'credit') {
+        return 'Xác nhận nạp';
+    }
+
+    if (adjustOperation.value === 'debit') {
+        return 'Xác nhận trừ';
+    }
+
     return 'Xác nhận hoa hồng';
 });
 
 const submitClass = computed(() => {
-    if (adjustOperation.value === 'credit') return 'submit-credit';
-    if (adjustOperation.value === 'debit') return 'submit-debit';
+    if (adjustOperation.value === 'credit') {
+        return 'submit-credit';
+    }
+
+    if (adjustOperation.value === 'debit') {
+        return 'submit-debit';
+    }
+
     return 'submit-commission';
 });
 
 function sourceChipClass(src: string): string {
-    if (src === 'admin_credit')
+    if (src === 'admin_credit') {
         return 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300';
-    if (src === 'admin_debit')
+    }
+
+    if (src === 'admin_debit') {
         return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300';
-    if (src === 'commission')
+    }
+
+    if (src === 'commission') {
         return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-800 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-300';
-    if (src === 'bet_place')
+    }
+
+    if (src === 'bet_place') {
         return 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300';
-    if (src === 'bet_cancel')
+    }
+
+    if (src === 'bet_cancel') {
         return 'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300';
-    if (src === 'withdrawal')
+    }
+
+    if (src === 'withdrawal') {
         return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300';
+    }
+
     return 'border-border/60 bg-muted/40 text-foreground/80';
 }
 
@@ -122,11 +161,14 @@ defineOptions({
         <div class="flex flex-wrap items-center justify-between gap-2">
             <Heading variant="small" title="Nạp / trừ số dư người dùng"
                 description="Điều chỉnh số dư và theo dõi toàn bộ lịch sử giao dịch của tài khoản." />
-            <Button variant="outline" as-child>
-                <Link :href="UserController.index.url()">
-                    <ArrowLeft class="size-4" /> Quay lại danh sách
-                </Link>
-            </Button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminListReloadButton :only="['user', 'transactions', 'summary']" />
+                <Button variant="outline" as-child>
+                    <Link :href="UserController.index.url()">
+                        <ArrowLeft class="size-4" /> Quay lại danh sách
+                    </Link>
+                </Button>
+            </div>
         </div>
 
         <section class="user-card">
@@ -282,15 +324,15 @@ defineOptions({
                     >
                         <div>
                             <h3 class="text-sm font-bold text-foreground">Lịch sử giao dịch</h3>
-                            <p class="text-xs text-muted-foreground">100 giao dịch gần nhất</p>
+                            <p class="text-xs text-muted-foreground">Theo dõi theo từng giao dịch (có phân trang)</p>
                         </div>
                         <span class="font-mono text-xs text-muted-foreground">
-                            #{{ transactions.length }}
+                            Tổng: {{ transactions.total }} giao dịch
                         </span>
                     </header>
 
                     <div
-                        v-if="transactions.length === 0"
+                        v-if="transactions.data.length === 0"
                         class="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
                         Chưa có giao dịch nào.
@@ -310,7 +352,7 @@ defineOptions({
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-border/60">
-                                <tr v-for="t in transactions" :key="t.id" class="align-top">
+                                <tr v-for="t in transactions.data" :key="t.id" class="align-top">
                                     <td class="px-3 py-2">
                                         <span
                                             class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
@@ -357,6 +399,13 @@ defineOptions({
                             </tbody>
                         </table>
                     </div>
+
+                    <Pagination
+                        v-if="transactions.total > 0"
+                        :meta="transactions"
+                        :only="['user', 'transactions', 'summary']"
+                        item-label="giao dịch"
+                    />
                 </div>
             </section>
         </div>

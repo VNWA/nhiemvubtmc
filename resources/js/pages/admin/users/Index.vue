@@ -16,8 +16,10 @@ import {
 import { computed, reactive, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
-import Pagination, { type PaginationLink } from '@/components/Pagination.vue';
+import Pagination from '@/components/Pagination.vue';
+import type {PaginationLink} from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -95,12 +97,28 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
-    if (cleaned !== '') params.q = cleaned;
+
+    if (cleaned !== '') {
+params.q = cleaned;
+}
+
     const ipClean = ipFilter.value.trim();
-    if (ipClean !== '') params.ip = ipClean;
-    if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
-    if (managerFilter.value && managerFilter.value !== '__all') params.manager_id = managerFilter.value;
-    if (props.filters.per_page && props.filters.per_page !== 15) params.per_page = props.filters.per_page;
+
+    if (ipClean !== '') {
+params.ip = ipClean;
+}
+
+    if (statusFilter.value && statusFilter.value !== '__all') {
+params.status = statusFilter.value;
+}
+
+    if (managerFilter.value && managerFilter.value !== '__all') {
+params.manager_id = managerFilter.value;
+}
+
+    if (props.filters.per_page && props.filters.per_page !== 15) {
+params.per_page = props.filters.per_page;
+}
 
     router.get(UserController.index.url(), params, {
         preserveState: true,
@@ -111,13 +129,19 @@ function pushFilters() {
 }
 
 watch(search, () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    if (debounceTimer) {
+clearTimeout(debounceTimer);
+}
+
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
 let ipDebounce: ReturnType<typeof setTimeout> | null = null;
 watch(ipFilter, () => {
-    if (ipDebounce) clearTimeout(ipDebounce);
+    if (ipDebounce) {
+clearTimeout(ipDebounce);
+}
+
     ipDebounce = setTimeout(pushFilters, 300);
 });
 
@@ -155,24 +179,32 @@ const passwordVisible = reactive<Record<number, boolean>>({});
 async function togglePassword(row: Row) {
     if (passwordVisible[row.id]) {
         passwordVisible[row.id] = false;
+        delete passwordCache[row.id];
+
         return;
     }
+
     if (passwordCache[row.id] !== undefined) {
         passwordVisible[row.id] = true;
+
         return;
     }
+
     passwordLoading[row.id] = true;
+
     try {
         const res = await fetch(UserController.password.url({ user: row.id }), {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         });
+
         if (!res.ok) {
             passwordCache[row.id] = null;
         } else {
             const json = (await res.json()) as { password: string | null };
             passwordCache[row.id] = json.password ?? null;
         }
+
         passwordVisible[row.id] = true;
     } finally {
         passwordLoading[row.id] = false;
@@ -182,10 +214,14 @@ async function togglePassword(row: Row) {
 const rowProcessing = reactive<Record<number, boolean>>({});
 
 function deleteUser(row: Row) {
-    if (rowProcessing[row.id]) return;
+    if (rowProcessing[row.id]) {
+return;
+}
+
     if (!window.confirm(`Xóa người dùng "${row.name}"?\n\nHành động này không thể hoàn tác.`)) {
         return;
     }
+
     rowProcessing[row.id] = true;
     router.delete(UserController.destroy.url({ user: row.id }), {
         preserveScroll: true,
@@ -196,15 +232,22 @@ function deleteUser(row: Row) {
 }
 
 function toggleLock(row: Row) {
-    if (rowProcessing[row.id]) return;
+    if (rowProcessing[row.id]) {
+return;
+}
 
     let reason = '';
+
     if (row.status === 'active') {
         const input = window.prompt(
             `Lý do khóa tài khoản "${row.name}" (có thể bỏ trống):`,
             '',
         );
-        if (input === null) return;
+
+        if (input === null) {
+return;
+}
+
         reason = input;
     } else if (!window.confirm(`Mở khóa tài khoản "${row.name}"?`)) {
         return;
@@ -243,12 +286,17 @@ defineOptions({
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" title="Người dùng"
                 description="Quản lý tài khoản khách hàng, lọc theo nhân viên quản lý / trạng thái." />
-            <Button as-child>
-                <Link :href="UserController.create.url()">
-                    <UserPlus class="size-4" />
-                    Thêm người dùng
-                </Link>
-            </Button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminListReloadButton
+                    :only="['users', 'filters', 'statusOptions', 'managerOptions']"
+                />
+                <Button as-child>
+                    <Link :href="UserController.create.url()">
+                        <UserPlus class="size-4" />
+                        Thêm người dùng
+                    </Link>
+                </Button>
+            </div>
         </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">

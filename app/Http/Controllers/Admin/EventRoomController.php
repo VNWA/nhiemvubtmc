@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\EventRoundService;
 use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -27,13 +28,16 @@ class EventRoomController extends Controller
 {
     public function __construct(private readonly WalletService $wallet) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $perPage = max(5, min((int) $request->integer('per_page', 15), 100));
+
         $rooms = EventRoom::query()
             ->withCount('options')
             ->orderByDesc('id')
-            ->get()
-            ->map(fn (EventRoom $r) => [
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (EventRoom $r) => [
                 'id' => (int) $r->getKey(),
                 'name' => $r->name,
                 'slug' => $r->slug,
