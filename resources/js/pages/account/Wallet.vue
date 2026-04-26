@@ -1,9 +1,19 @@
 <script setup lang="ts">
+import { Head, Link } from '@inertiajs/vue3';
+import {
+    ArrowDownCircle,
+    ArrowLeft,
+    ArrowUpCircle,
+    ChevronDown,
+    Gift,
+    History,
+    RotateCcw,
+    Ticket,
+    Wallet,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 import AccountController from '@/actions/App/Http/Controllers/Client/AccountController';
 import { formatVnd } from '@/lib/vnd';
-import { Head, Link } from '@inertiajs/vue3';
-import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, ChevronDown, Gift, History, Ticket, Wallet } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
 
 type Tx = {
     id: number;
@@ -19,7 +29,7 @@ type Tx = {
 
 type Pagination = { page: number; perPage: number; total: number; hasMore: boolean };
 
-type Filter = 'all' | 'credit' | 'debit' | 'commission' | 'bet_place';
+type Filter = 'all' | 'credit' | 'refund' | 'debit' | 'commission' | 'bet_place';
 
 const props = defineProps<{
     balanceVnd: number;
@@ -39,16 +49,22 @@ const loadError = ref<string | null>(null);
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
     { value: 'all', label: 'Tất cả' },
-    { value: 'credit', label: 'Nạp tiền' },
+    { value: 'credit', label: 'Nạp' },
+    { value: 'refund', label: 'Hoàn trả' },
     { value: 'bet_place', label: 'Lệ phí' },
     { value: 'commission', label: 'Hoa hồng' },
     { value: 'debit', label: 'Rút tiền' },
 ];
 
+function isRefundSource(source: string): boolean {
+    return source === 'bet_cancel' || source === 'event_refund';
+}
+
 const totalCredit = computed(() =>
-    items.value
-        .filter((t) => t.direction === 'credit' && t.source !== 'commission')
-        .reduce((s, t) => s + t.amount_vnd, 0),
+    items.value.filter((t) => t.source === 'admin_credit').reduce((s, t) => s + t.amount_vnd, 0),
+);
+const totalRefund = computed(() =>
+    items.value.filter((t) => isRefundSource(t.source)).reduce((s, t) => s + t.amount_vnd, 0),
 );
 const totalDebit = computed(() =>
     items.value
@@ -66,31 +82,66 @@ function txTitle(tx: Tx): string {
     if (tx.description && tx.description.trim() !== '') {
         return tx.description;
     }
+
     return tx.source_label;
 }
 
 function txIconClass(tx: Tx): string {
-    if (tx.source === 'commission') return 'bg-fuchsia-100 text-fuchsia-700';
-    if (tx.source === 'bet_place') return 'bg-blue-100 text-blue-700';
-    if (tx.direction === 'credit') return 'bg-emerald-100 text-emerald-700';
+    if (tx.source === 'commission') {
+return 'bg-fuchsia-100 text-fuchsia-700';
+}
+
+    if (tx.source === 'bet_place') {
+return 'bg-blue-100 text-blue-700';
+}
+
+    if (isRefundSource(tx.source)) {
+return 'bg-amber-100 text-amber-800';
+}
+
+    if (tx.source === 'admin_credit' || (tx.direction === 'credit' && !isRefundSource(tx.source))) {
+        return 'bg-emerald-100 text-emerald-700';
+    }
+
     return 'bg-rose-100 text-rose-700';
 }
 
 function txAmountClass(tx: Tx): string {
-    if (tx.source === 'commission') return 'text-fuchsia-700';
-    if (tx.source === 'bet_place') return 'text-blue-700';
-    if (tx.direction === 'credit') return 'text-emerald-700';
+    if (tx.source === 'commission') {
+return 'text-fuchsia-700';
+}
+
+    if (tx.source === 'bet_place') {
+return 'text-blue-700';
+}
+
+    if (isRefundSource(tx.source)) {
+return 'text-amber-800';
+}
+
+    if (tx.direction === 'credit') {
+return 'text-emerald-700';
+}
+
     return 'text-rose-700';
 }
 
 async function fetchPage(targetPage: number, replace: boolean) {
-    if (loading.value) return;
+    if (loading.value) {
+return;
+}
+
     loading.value = true;
     loadError.value = null;
+
     try {
         const url = AccountController.walletData.url({ query: { page: targetPage, filter: filter.value } });
         const res = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        if (!res.ok) {
+throw new Error('HTTP ' + res.status);
+}
+
         const json = (await res.json()) as { data: Tx[]; total: number; hasMore: boolean; page: number };
         items.value = replace ? json.data : items.value.concat(json.data);
         total.value = json.total;
@@ -108,7 +159,10 @@ function loadMore() {
 }
 
 function setFilter(value: Filter) {
-    if (filter.value === value) return;
+    if (filter.value === value) {
+return;
+}
+
     filter.value = value;
     fetchPage(1, true);
 }
@@ -139,19 +193,25 @@ function setFilter(value: Filter) {
                 <span class="ml-auto text-[11px] text-stone-500">{{ items.length }}/{{ total }}</span>
             </div>
 
-            <div class="mt-2 grid grid-cols-5 gap-1">
+            <div class="mt-2 grid grid-cols-2 gap-1 min-[400px]:grid-cols-3 min-[520px]:grid-cols-6">
                 <button v-for="f in FILTERS" :key="f.value" type="button" class="filter-chip"
                     :class="{ 'is-active': filter === f.value }" @click="setFilter(f.value)">
                     {{ f.label }}
                 </button>
             </div>
 
-            <div class="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+            <div class="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3 min-[700px]:grid-cols-5">
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-2 py-1.5 text-emerald-800">
                     <p class="flex items-center gap-1">
                         <ArrowUpCircle class="size-3" /> Nạp
                     </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(totalCredit) }}</p>
+                </div>
+                <div class="rounded-lg border border-amber-200 bg-amber-50/70 px-2 py-1.5 text-amber-900">
+                    <p class="flex items-center gap-1">
+                        <RotateCcw class="size-3" /> Hoàn trả
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(totalRefund) }}</p>
                 </div>
                 <div class="rounded-lg border border-blue-200 bg-blue-50/70 px-2 py-1.5 text-blue-800">
                     <p class="flex items-center gap-1">
@@ -181,6 +241,7 @@ function setFilter(value: Filter) {
                         :class="txIconClass(tx)">
                         <Gift v-if="tx.source === 'commission'" class="size-4" />
                         <Ticket v-else-if="tx.source === 'bet_place'" class="size-4" />
+                        <RotateCcw v-else-if="isRefundSource(tx.source)" class="size-4" />
                         <ArrowUpCircle v-else-if="tx.direction === 'credit'" class="size-4" />
                         <ArrowDownCircle v-else class="size-4" />
                     </span>
@@ -193,9 +254,11 @@ function setFilter(value: Filter) {
                                 ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
                                 : tx.source === 'bet_place'
                                     ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                    : tx.direction === 'credit'
-                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                        : 'border-rose-200 bg-rose-50 text-rose-700'">
+                                    : isRefundSource(tx.source)
+                                        ? 'border-amber-200 bg-amber-50 text-amber-800'
+                                        : tx.direction === 'credit'
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : 'border-rose-200 bg-rose-50 text-rose-700'">
                                 {{ tx.source_label }}
                             </span>
                             <span>{{ tx.created_at ?? '—' }}</span>

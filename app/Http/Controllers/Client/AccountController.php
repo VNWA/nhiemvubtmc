@@ -278,7 +278,11 @@ class AccountController extends Controller
         match ($filter) {
             'credit' => $query
                 ->where('direction', WalletDirection::Credit->value)
-                ->where('source', '<>', WalletSource::Commission->value),
+                ->where('source', WalletSource::AdminCredit->value),
+            'refund' => $query->whereIn('source', [
+                WalletSource::BetCancel->value,
+                WalletSource::EventRefund->value,
+            ]),
             'debit' => $query
                 ->where('direction', WalletDirection::Debit->value)
                 ->where('source', '<>', WalletSource::BetPlace->value),
@@ -292,7 +296,7 @@ class AccountController extends Controller
     {
         $value = is_string($raw) ? $raw : 'all';
 
-        return in_array($value, ['all', 'credit', 'debit', 'commission', 'bet_place'], true) ? $value : 'all';
+        return in_array($value, ['all', 'credit', 'refund', 'debit', 'commission', 'bet_place'], true) ? $value : 'all';
     }
 
     /**
