@@ -61,6 +61,26 @@ class UserManagementTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_admin_can_filter_users_by_last_login_ip(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+
+        $a = User::factory()->create(['last_login_ip' => '10.0.0.5']);
+        $a->assignRole('user');
+        $b = User::factory()->create(['last_login_ip' => '192.168.1.1']);
+        $b->assignRole('user');
+
+        $response = $this->actingAs($admin)->get(route('admin.users.index', ['ip' => '10.0.0']));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->has('users.data', 1)
+            ->where('users.data.0.id', $a->id)
+        );
+    }
+
     public function test_admin_can_create_user_without_email(): void
     {
         $this->createRoles();

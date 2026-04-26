@@ -23,6 +23,7 @@ class StaffController extends Controller
         $this->ensureAdmin($request);
 
         $search = trim((string) $request->query('q', ''));
+        $ipFilter = trim((string) $request->query('ip', ''));
         $statusFilter = (string) $request->query('status', '');
         $perPage = max(5, min((int) $request->integer('per_page', 15), 100));
 
@@ -39,6 +40,10 @@ class StaffController extends Controller
                         ->orWhereRaw('LOWER(email) LIKE ?', [$like]);
                 });
             })
+            ->when($ipFilter !== '', function ($query) use ($ipFilter) {
+                $like = '%'.$ipFilter.'%';
+                $query->where('last_login_ip', 'like', $like);
+            })
             ->when(in_array($statusFilter, ['active', 'locked'], true), function ($query) use ($statusFilter) {
                 $query->where('status', $statusFilter);
             })
@@ -51,6 +56,7 @@ class StaffController extends Controller
             'staff' => $staff,
             'filters' => [
                 'q' => $search,
+                'ip' => $ipFilter,
                 'status' => $statusFilter,
                 'per_page' => $perPage,
             ],

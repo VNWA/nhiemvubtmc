@@ -55,11 +55,12 @@ type Paginator = {
 
 const props = defineProps<{
     staff: Paginator;
-    filters: { q: string; status: string; per_page: number };
+    filters: { q: string; ip: string; status: string; per_page: number };
     statusOptions: { value: string; label: string }[];
 }>();
 
 const search = ref<string>(props.filters.q ?? '');
+const ipFilter = ref<string>(props.filters.ip ?? '');
 const statusFilter = ref<string>(props.filters.status ?? '');
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -68,6 +69,8 @@ function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
     if (cleaned) params.q = cleaned;
+    const ipClean = ipFilter.value.trim();
+    if (ipClean) params.ip = ipClean;
     if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
     router.get(StaffController.index.url(), params, {
         preserveState: true,
@@ -80,6 +83,12 @@ function pushFilters() {
 watch(search, () => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(pushFilters, 300);
+});
+
+let ipDebounce: ReturnType<typeof setTimeout> | null = null;
+watch(ipFilter, () => {
+    if (ipDebounce) clearTimeout(ipDebounce);
+    ipDebounce = setTimeout(pushFilters, 300);
 });
 
 watch(statusFilter, pushFilters);
@@ -127,7 +136,7 @@ function confirmDelete(name: string) {
     return window.confirm(`Xóa nhân viên "${name}"?\nUser do nhân viên tạo sẽ trở thành tự đăng ký.`);
 }
 
-const hasFilters = computed(() => !!(search.value || statusFilter.value));
+const hasFilters = computed(() => !!(search.value || ipFilter.value || statusFilter.value));
 
 defineOptions({
     layout: {
@@ -152,12 +161,18 @@ defineOptions({
         </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="relative">
                     <Search
                         class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input v-model="search" type="search" placeholder="Tìm tên / đăng nhập / email / SĐT…"
                         class="h-10 pl-9" autocomplete="off" />
+                </div>
+                <div class="relative">
+                    <Search
+                        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="ipFilter" type="search" inputmode="search" placeholder="Lọc theo IP đăng nhập…"
+                        class="h-10 pl-9 font-mono text-sm" autocomplete="off" />
                 </div>
                 <Select v-model="statusFilter">
                     <SelectTrigger class="h-10 w-full">
@@ -177,7 +192,7 @@ defineOptions({
                 </span>
                 <button v-if="hasFilters" type="button"
                     class="inline-flex items-center gap-1 rounded-md border border-border/60 px-2 py-1 font-medium text-foreground/80 transition hover:bg-muted dark:border-sidebar-border"
-                    @click="() => { search = ''; statusFilter = ''; }">
+                    @click="() => { search = ''; ipFilter = ''; statusFilter = ''; }">
                     <X class="size-3.5" /> Xóa bộ lọc
                 </button>
             </div>

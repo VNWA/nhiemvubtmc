@@ -71,6 +71,7 @@ const props = defineProps<{
     users: Paginator;
     filters: {
         q: string;
+        ip: string;
         status: string;
         manager_id: number | null;
         per_page: number;
@@ -83,6 +84,7 @@ const page = usePage();
 const currentUserId = computed(() => page.props.auth.user?.id as number | undefined);
 
 const search = ref<string>(props.filters.q ?? '');
+const ipFilter = ref<string>(props.filters.ip ?? '');
 const statusFilter = ref<string>(props.filters.status ?? '');
 const managerFilter = ref<string>(
     props.filters.manager_id !== null ? String(props.filters.manager_id) : '',
@@ -94,6 +96,8 @@ function pushFilters() {
     const params: Record<string, string | number> = {};
     const cleaned = search.value.trim();
     if (cleaned !== '') params.q = cleaned;
+    const ipClean = ipFilter.value.trim();
+    if (ipClean !== '') params.ip = ipClean;
     if (statusFilter.value && statusFilter.value !== '__all') params.status = statusFilter.value;
     if (managerFilter.value && managerFilter.value !== '__all') params.manager_id = managerFilter.value;
     if (props.filters.per_page && props.filters.per_page !== 15) params.per_page = props.filters.per_page;
@@ -111,20 +115,31 @@ watch(search, () => {
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
+let ipDebounce: ReturnType<typeof setTimeout> | null = null;
+watch(ipFilter, () => {
+    if (ipDebounce) clearTimeout(ipDebounce);
+    ipDebounce = setTimeout(pushFilters, 300);
+});
+
 watch([statusFilter, managerFilter], () => pushFilters());
 
 function clearSearch() {
     search.value = '';
 }
 
+function clearIpFilter() {
+    ipFilter.value = '';
+}
+
 function resetFilters() {
     statusFilter.value = '';
     managerFilter.value = '';
     search.value = '';
+    ipFilter.value = '';
 }
 
 const hasFilters = computed(
-    () => !!(search.value || statusFilter.value || managerFilter.value),
+    () => !!(search.value || ipFilter.value || statusFilter.value || managerFilter.value),
 );
 
 function statusClass(status: string): string {
@@ -237,7 +252,7 @@ defineOptions({
         </div>
 
         <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div class="grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
                 <div class="relative">
                     <Search
                         class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -246,6 +261,18 @@ defineOptions({
                     <button v-if="search !== ''" type="button"
                         class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         aria-label="Xóa tìm kiếm" @click="clearSearch">
+                        <X class="size-4" />
+                    </button>
+                </div>
+
+                <div class="relative">
+                    <Search
+                        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="ipFilter" type="search" inputmode="search" placeholder="Lọc theo IP đăng nhập…"
+                        class="h-10 pl-9 pr-9 font-mono text-sm" autocomplete="off" />
+                    <button v-if="ipFilter !== ''" type="button"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Xóa lọc IP" @click="clearIpFilter">
                         <X class="size-4" />
                     </button>
                 </div>

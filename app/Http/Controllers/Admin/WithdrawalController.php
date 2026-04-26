@@ -21,6 +21,12 @@ class WithdrawalController extends Controller
 
     public function index(Request $request): Response
     {
+        $actor = $request->user();
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+        $isStaffNotAdmin = $this->isStaffNotAdmin($actor);
+
         $status = $request->string('status')->toString();
         $allowedStatuses = array_map(fn (WithdrawalStatus $s) => $s->value, WithdrawalStatus::cases());
         $perPage = (int) $request->integer('per_page', 15);
@@ -29,6 +35,12 @@ class WithdrawalController extends Controller
         $query = WithdrawalRequest::query()
             ->with(['user:id,name,username', 'processor:id,name,username'])
             ->orderByDesc('created_at');
+
+        if ($isStaffNotAdmin) {
+            $query->whereHas('user', function ($q) use ($actor) {
+                $q->where('created_by', (int) $actor->getKey());
+            });
+        }
 
         if (in_array($status, $allowedStatuses, true)) {
             $query->where('status', $status);
@@ -60,7 +72,13 @@ class WithdrawalController extends Controller
                 'created_at' => $r->created_at?->formatVn(),
             ]);
 
-        $counts = WithdrawalRequest::query()
+        $countsQuery = WithdrawalRequest::query();
+        if ($isStaffNotAdmin) {
+            $countsQuery->whereHas('user', function ($q) use ($actor) {
+                $q->where('created_by', (int) $actor->getKey());
+            });
+        }
+        $counts = $countsQuery
             ->selectRaw('status, COUNT(*) as total, COALESCE(SUM(amount_vnd), 0) as sum_amount')
             ->groupBy('status')
             ->get()
@@ -87,6 +105,8 @@ class WithdrawalController extends Controller
 
     public function approve(Request $request, WithdrawalRequest $withdrawal): RedirectResponse
     {
+        $this->assertStaffCanActOnWithdrawal($request, $withdrawal);
+
         $data = $request->validate([
             'admin_note' => ['nullable', 'string', 'max:500'],
         ]);
@@ -129,6 +149,8 @@ class WithdrawalController extends Controller
 
     public function reject(Request $request, WithdrawalRequest $withdrawal): RedirectResponse
     {
+        $this->assertStaffCanActOnWithdrawal($request, $withdrawal);
+
         $data = $request->validate([
             'admin_note' => ['required', 'string', 'max:500'],
         ]);
@@ -145,5 +167,31 @@ class WithdrawalController extends Controller
         ]);
 
         return back()->with('success', 'Đã từ chối yêu cầu rút tiền.');
+    }
+
+    private function isStaffNotAdmin(User $user): bool
+    {
+        return $user->hasRole('staff') && ! $user->hasRole('admin');
+    }
+
+    private function assertStaffCanActOnWithdrawal(Request $request, WithdrawalRequest $withdrawal): void
+    {
+        $actor = $request->user();
+        if (! $actor instanceof User) {
+            abort(403);
+        }
+        if ($actor->hasRole('admin')) {
+            return;
+        }
+        if (! $this->isStaffNotAdmin($actor)) {
+            return;
+        }
+        $withdrawal->loadMissing('user');
+        if ($withdrawal->user === null) {
+            abort(403);
+        }
+        if ((int) $withdrawal->user->created_by !== (int) $actor->getKey()) {
+            abort(403);
+        }
     }
 }

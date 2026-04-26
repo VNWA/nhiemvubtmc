@@ -60,6 +60,7 @@ class UserController extends Controller
         $isStaffOnly = $this->isStaffOnly($viewer);
 
         $search = trim((string) $request->query('q', ''));
+        $ipFilter = trim((string) $request->query('ip', ''));
         $statusFilter = (string) $request->query('status', '');
         $managerFilter = (int) $request->query('manager_id', 0);
         $perPage = (int) $request->integer('per_page', 15);
@@ -84,6 +85,10 @@ class UserController extends Controller
                         ->orWhereRaw('LOWER(phone) LIKE ?', [$like]);
                 });
             })
+            ->when($ipFilter !== '', function ($query) use ($ipFilter) {
+                $like = '%'.$ipFilter.'%';
+                $query->where('last_login_ip', 'like', $like);
+            })
             ->when(in_array($statusFilter, ['active', 'locked'], true), function ($query) use ($statusFilter) {
                 $query->where('status', $statusFilter);
             })
@@ -99,6 +104,7 @@ class UserController extends Controller
             'users' => $users,
             'filters' => [
                 'q' => $search,
+                'ip' => $ipFilter,
                 'status' => $statusFilter,
                 'manager_id' => $managerFilter > 0 ? $managerFilter : null,
                 'per_page' => $perPage,

@@ -47,13 +47,7 @@ const mainNavItems = computed((): NavItem[] => {
         });
     }
 
-    if (canManage) {
-        items.push({
-            title: 'Users',
-            href: UserController.index.url(),
-            icon: Users,
-        });
-    }
+
 
     if (isAdmin) {
         items.push({
@@ -61,6 +55,16 @@ const mainNavItems = computed((): NavItem[] => {
             href: StaffController.index.url(),
             icon: UserCog,
         });
+
+    }
+    if (canManage) {
+        items.push({
+            title: 'Users',
+            href: UserController.index.url(),
+            icon: Users,
+        });
+    }
+    if (isAdmin) {
         items.push({
             title: 'Sự kiện (phòng)',
             href: EventRoomController.index.url(),
