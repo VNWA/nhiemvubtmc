@@ -61,12 +61,12 @@ const maskedAccount = computed(() => {
     const num = props.bank.bank_account_number;
 
     if (!num) {
-return null;
-}
+        return null;
+    }
 
     if (num.length <= 4) {
-return num;
-}
+        return num;
+    }
 
     return '•••• ' + num.slice(-4);
 });
@@ -119,8 +119,8 @@ const menuItems = computed<MenuItem[]>(() => [
 
 function doLogout() {
     if (!confirm('Đăng xuất khỏi tài khoản?')) {
-return;
-}
+        return;
+    }
 
     router.post(logout().url, {}, { preserveScroll: false });
 }
@@ -143,12 +143,10 @@ return;
                     <Wallet class="size-6" />
                 </div>
             </div>
-            <div
-                class="mt-3 grid grid-cols-1 gap-2 text-xs min-[400px]:grid-cols-3"
-            >
+            <div class="mt-3 grid grid-cols-1 gap-2 text-xs min-[400px]:grid-cols-3">
                 <div class="balance-chip min-w-0">
                     <p class="balance-label flex items-center gap-1">
-                        <ArrowUpCircle class="size-3.5 shrink-0" /> Tổng nạp
+                        <ArrowUpCircle class="size-3.5 shrink-0" /> Tổng Nạp + Hoàn Trả
                     </p>
                     <p class="mt-0.5 break-all font-mono font-semibold tabular-nums">
                         {{ formatVnd(totals.totalCreditVnd) }}
@@ -156,7 +154,7 @@ return;
                 </div>
                 <div class="balance-chip min-w-0">
                     <p class="balance-label flex items-center gap-1">
-                        <ArrowDownCircle class="size-3.5 shrink-0" /> Tổng rút
+                        <ArrowDownCircle class="size-3.5 shrink-0" /> Tổng Rút + Lệ Phí
                     </p>
                     <p class="mt-0.5 break-all font-mono font-semibold tabular-nums">
                         {{ formatVnd(totals.totalDebitVnd) }}
