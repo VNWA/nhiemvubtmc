@@ -16,7 +16,6 @@ use App\Models\User;
 use App\Services\EventRoundService;
 use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -69,7 +68,6 @@ class EventRoomController extends Controller
             'slug' => $slug,
             'avatar_path' => $avatarPath,
             'is_active' => (string) $request->input('is_active', '1') === '1',
-            'viewer_offset' => max(0, (int) ($data['viewer_offset'] ?? 0)),
         ]);
 
         foreach (array_values($data['options']) as $order => $opt) {
@@ -96,7 +94,6 @@ class EventRoomController extends Controller
                 'slug' => $eventRoom->slug,
                 'avatar_url' => $eventRoom->avatar_url,
                 'is_active' => $eventRoom->is_active,
-                'viewer_offset' => (int) $eventRoom->viewer_offset,
             ],
         ]);
     }
@@ -163,7 +160,9 @@ class EventRoomController extends Controller
                 'slug' => $eventRoom->slug,
                 'avatar_url' => $eventRoom->avatar_url,
                 'is_active' => $eventRoom->is_active,
-                'viewer_offset' => (int) $eventRoom->viewer_offset,
+                'auto_rollover_seconds' => $eventRoom->auto_rollover_seconds === null
+                    ? null
+                    : (int) $eventRoom->auto_rollover_seconds,
             ],
             'options' => $eventRoom->options->map(fn (EventRoomOption $o) => [
                 'id' => (int) $o->getKey(),
@@ -201,7 +200,6 @@ class EventRoomController extends Controller
         $attributes = [
             'name' => $data['name'],
             'is_active' => (string) $request->input('is_active', '0') === '1',
-            'viewer_offset' => max(0, (int) ($data['viewer_offset'] ?? 0)),
         ];
 
         if ($request->hasFile('avatar')) {
@@ -219,19 +217,6 @@ class EventRoomController extends Controller
         return redirect()
             ->route('admin.sukien-rooms.index')
             ->with('success', 'Đã cập nhật phòng.');
-    }
-
-    public function updateViewerOffset(Request $request, EventRoom $eventRoom): RedirectResponse
-    {
-        $validated = $request->validate([
-            'viewer_offset' => ['required', 'integer', 'min:0', 'max:999999'],
-        ]);
-
-        $eventRoom->update([
-            'viewer_offset' => (int) $validated['viewer_offset'],
-        ]);
-
-        return back()->with('success', 'Đã cập nhật số người xem bù.');
     }
 
     public function destroy(EventRoom $eventRoom): RedirectResponse

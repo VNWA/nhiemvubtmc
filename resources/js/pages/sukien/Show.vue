@@ -49,7 +49,6 @@ const props = defineProps<{
         slug: string;
         avatar_url: string | null;
         is_active: boolean;
-        viewer_offset: number;
     };
     options: Opt[];
     openRound: OpenRoundT | null;
@@ -84,8 +83,22 @@ function syncPresenceList() {
     presenceNames.value = presenceMembers.map((m) => m.name);
 }
 
+// Synthetic viewer count: a random fake offset between 500 and 1000 added on
+// top of the real presence count, refreshed every second to feel "alive".
+// Kept purely client-side — no DB column / no backend round-trip.
+const FAKE_VIEWER_MIN = 500;
+const FAKE_VIEWER_MAX = 1000;
+function randomFakeViewers(): number {
+    return (
+        Math.floor(Math.random() * (FAKE_VIEWER_MAX - FAKE_VIEWER_MIN + 1)) +
+        FAKE_VIEWER_MIN
+    );
+}
+const fakeViewerOffset = ref<number>(randomFakeViewers());
+let fakeViewerHandle: ReturnType<typeof setInterval> | null = null;
+
 const displayedPresenceCount = computed(
-    () => presenceCount.value + (props.eventRoom.viewer_offset ?? 0),
+    () => presenceCount.value + fakeViewerOffset.value,
 );
 
 const remainingMs = computed(() => {
@@ -147,6 +160,11 @@ onMounted(() => {
     tickHandle = setInterval(() => {
         now.value = Date.now();
     }, 250);
+
+    // Refresh fake viewer offset every second.
+    fakeViewerHandle = setInterval(() => {
+        fakeViewerOffset.value = randomFakeViewers();
+    }, 2000);
 
     unsubPublic = subscribeSukienPublicChannel(props.eventRoom.id, {
         onRoundStarted: (p: SukienRoundPayload) => {
@@ -228,6 +246,9 @@ onUnmounted(() => {
     unsubPresence?.();
     if (tickHandle) {
         clearInterval(tickHandle);
+    }
+    if (fakeViewerHandle) {
+        clearInterval(fakeViewerHandle);
     }
     if (endReloadHandle) {
         clearTimeout(endReloadHandle);
@@ -515,12 +536,12 @@ async function loadMoreRounds() {
 
                 <ul class="grid grid-cols-2 gap-1.5">
                     <li v-for="o in options" :key="o.id">
-                        <button type="button" class="option-chip w-full"
-                            :class="{
-                                'option-chip-placed': hasPlacedBet,
-                                'option-chip-selected': !hasPlacedBet && isSelected(o.id),
-                            }" :disabled="hasPlacedBet" @click="toggleOption(o.id)">
-                            <span class="inline-flex shrink-0 items-center justify-center rounded px-2 py-1 text-xs font-bold min-w-14"
+                        <button type="button" class="option-chip w-full" :class="{
+                            'option-chip-placed': hasPlacedBet,
+                            'option-chip-selected': !hasPlacedBet && isSelected(o.id),
+                        }" :disabled="hasPlacedBet" @click="toggleOption(o.id)">
+                            <span
+                                class="inline-flex shrink-0 items-center justify-center rounded px-2 py-1 text-xs font-bold min-w-14"
                                 :style="{ backgroundColor: o.bg_color, color: o.text_color }">
                                 {{ o.label }}
                             </span>
@@ -542,8 +563,7 @@ async function loadMoreRounds() {
                     </li>
                 </ul>
 
-                <div v-if="hasPlacedBet"
-                    class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
+                <div v-if="hasPlacedBet" class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2">
                     <div class="flex items-center justify-between gap-2">
                         <p class="text-xs text-emerald-900">
                             Đã tham gia
@@ -571,9 +591,8 @@ async function loadMoreRounds() {
                     <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-stone-600">
                         Số tiền tham gia
                     </label>
-                    <CurrencyInput id="bet-amount" :model-value="draftAmount"
-                        @update:model-value="setDraftAmount" :max="liveBalance" placeholder="0"
-                        input-class="bet-amount-input w-full" />
+                    <CurrencyInput id="bet-amount" :model-value="draftAmount" @update:model-value="setDraftAmount"
+                        :max="liveBalance" placeholder="0" input-class="bet-amount-input w-full" />
 
                     <div class="mt-2 grid grid-cols-4 gap-1.5">
                         <button v-for="amt in QUICK_AMOUNTS" :key="amt" type="button" class="quick-chip"
@@ -600,7 +619,8 @@ async function loadMoreRounds() {
                     <p v-if="insufficientBalance" class="mt-1.5 text-[11px] font-medium text-red-600">
                         Số tiền tham gia vượt số dư ({{ formatVnd(liveBalance) }}).
                     </p>
-                    <p v-else-if="selectedCount > 0 && draftAmount > 0 && draftAmount < 1000" class="mt-1.5 text-[11px] text-red-600">
+                    <p v-else-if="selectedCount > 0 && draftAmount > 0 && draftAmount < 1000"
+                        class="mt-1.5 text-[11px] text-red-600">
                         Số tiền tối thiểu là 1.000đ.
                     </p>
                     <p v-else-if="betForm.errors.option_ids" class="mt-1.5 text-[11px] text-red-600">
@@ -615,8 +635,7 @@ async function loadMoreRounds() {
                 </div>
 
                 <p v-if="cancelError" class="text-xs text-red-600">{{ cancelError }}</p>
-                <p v-if="cancelLocked && hasPlacedBet"
-                    class="text-[11px] text-stone-500">
+                <p v-if="cancelLocked && hasPlacedBet" class="text-[11px] text-stone-500">
                     Còn dưới 5 giây — không thể huỷ tham gia.
                 </p>
             </div>

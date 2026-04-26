@@ -211,20 +211,15 @@ class UserController extends Controller
     {
         $domain = 'sjcsukien.com';
 
-        for ($i = 0; $i < 20; $i++) {
-            $local = Str::lower(fake()->unique()->userName());
-            $email = $local.'@'.$domain;
+        $base = Str::slug($username, '.') ?: 'user';
+        $email = $base . '@' . $domain;
 
-            if (! User::query()->where('email', $email)->exists()) {
-                return $email;
-            }
+        $i = 1;
+
+        while (User::query()->where('email', $email)->exists()) {
+            $email = $base . $i . '@' . $domain;
+            $i++;
         }
-
-        $fallback = Str::slug($username, '.') ?: 'user';
-
-        do {
-            $email = $fallback.Str::lower(Str::random(4)).'@'.$domain;
-        } while (User::query()->where('email', $email)->exists());
 
         return $email;
     }

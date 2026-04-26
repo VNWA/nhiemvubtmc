@@ -22,9 +22,10 @@ class EventRoundController extends Controller
         $durationSeconds = $request->filled('duration_seconds')
             ? (int) $request->validated('duration_seconds')
             : null;
+        $autoRollover = (bool) $request->boolean('auto_rollover');
 
         try {
-            $rounds->startRound($eventRoom, $user, $name, $durationSeconds);
+            $rounds->startRound($eventRoom, $user, $name, $durationSeconds, $autoRollover);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
         }
@@ -46,6 +47,14 @@ class EventRoundController extends Controller
             $rounds->endRound($round, $user);
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
+        }
+
+        // Pressing "Kết thúc phiên" must also break the auto-rollover loop —
+        // otherwise the queued AutoEndExpiredRoundJob would keep spawning new
+        // rounds. Reload to avoid a stale model overwriting concurrent edits.
+        $eventRoom->refresh();
+        if ($eventRoom->auto_rollover_seconds !== null) {
+            $eventRoom->forceFill(['auto_rollover_seconds' => null])->save();
         }
 
         return back()->with('success', 'Đã kết thúc phiên.');

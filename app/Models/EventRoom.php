@@ -17,7 +17,7 @@ class EventRoom extends Model
         'slug',
         'avatar_path',
         'is_active',
-        'viewer_offset',
+        'auto_rollover_seconds',
     ];
 
     /**
@@ -27,7 +27,7 @@ class EventRoom extends Model
     {
         return [
             'is_active' => 'boolean',
-            'viewer_offset' => 'integer',
+            'auto_rollover_seconds' => 'integer',
         ];
     }
 

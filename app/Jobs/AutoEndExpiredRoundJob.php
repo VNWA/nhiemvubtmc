@@ -17,7 +17,7 @@ class AutoEndExpiredRoundJob implements ShouldQueue
     public function handle(EventRoundService $rounds): void
     {
         /** @var EventRound|null $round */
-        $round = EventRound::query()->whereKey($this->eventRoundId)->first();
+        $round = EventRound::query()->with('eventRoom')->whereKey($this->eventRoundId)->first();
 
         if ($round === null) {
             return;
@@ -32,6 +32,8 @@ class AutoEndExpiredRoundJob implements ShouldQueue
             return;
         }
 
+        // autoEndRound also triggers the rollover on the room when it
+        // succesfully closes the round, so a single call covers both steps.
         $rounds->autoEndRound($round);
     }
 }

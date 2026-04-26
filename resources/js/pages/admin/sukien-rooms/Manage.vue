@@ -18,7 +18,7 @@ import {
 } from '@/echo';
 import { formatVnd } from '@/lib/vnd';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { Check, ExternalLink, Pencil, Power, PowerOff, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
+import { ExternalLink, Pencil, Power, PowerOff, Repeat, Timer, Users, Wifi, WifiOff } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 type Opt = { id: number; label: string; bg_color: string; text_color: string };
@@ -44,7 +44,7 @@ const props = defineProps<{
         slug: string;
         avatar_url: string | null;
         is_active: boolean;
-        viewer_offset: number;
+        auto_rollover_seconds: number | null;
     };
     options: Opt[];
     openRound: OpenRoundT | null;
@@ -70,22 +70,6 @@ const presenceCount = ref(0);
 const presenceNames = ref<string[]>([]);
 const rtConnected = ref(!!echo);
 const now = ref(Date.now());
-
-const viewerOffsetForm = useForm<{ viewer_offset: number }>({
-    viewer_offset: props.eventRoom.viewer_offset ?? 0,
-});
-
-function submitViewerOffset() {
-    viewerOffsetForm
-        .transform((data) => ({
-            viewer_offset: Math.max(0, Math.min(999999, Math.round(Number(data.viewer_offset) || 0))),
-        }))
-        .patch(EventRoomController.updateViewerOffset.url({ event_room: props.eventRoom.id }), {
-            preserveScroll: true,
-            preserveState: true,
-            only: ['eventRoom'],
-        });
-}
 
 let unsubPublic: (() => void) | null = null;
 let unsubPresence: (() => void) | null = null;
@@ -136,10 +120,6 @@ const timerColorClass = computed(() => {
     return 'bg-emerald-100 text-emerald-800';
 });
 
-const displayedPresenceCount = computed(
-    () => presenceCount.value + (props.eventRoom.viewer_offset ?? 0),
-);
-
 const ratios = computed(() => {
     const total = liveTotalVnd.value;
     return props.options.map((o) => {
@@ -165,9 +145,12 @@ watch(timerExpired, (expired) => {
     if (endReloadHandle) {
         clearTimeout(endReloadHandle);
     }
+    // Wait long enough for the AutoEndExpiredRoundJob to close the round
+    // AND (optionally) open the next rollover round. Reload `eventRoom`
+    // too so the rollover badge stays in sync.
     endReloadHandle = setTimeout(() => {
-        router.reload({ only: ['openRound', 'recentRounds', 'betsStats'] });
-    }, 800);
+        router.reload({ only: ['openRound', 'recentRounds', 'betsStats', 'eventRoom'] });
+    }, 1500);
 });
 
 onMounted(() => {
@@ -198,7 +181,9 @@ onMounted(() => {
             liveBetsCount.value = 0;
             liveTotalVnd.value = 0;
             livePerOption.value = [];
-            router.reload({ only: ['openRound', 'recentRounds', 'betsStats'] });
+            // Include eventRoom so the rollover badge clears when admin
+            // pressed "Kết thúc phiên" (which resets auto_rollover_seconds).
+            router.reload({ only: ['openRound', 'recentRounds', 'betsStats', 'eventRoom'] });
         },
         onStats: (p: SukienStatsPayload) => {
             if (p.eventRoomId !== props.eventRoom.id) {
@@ -251,38 +236,27 @@ watch(
     { deep: true },
 );
 
-watch(
-    () => props.eventRoom.viewer_offset,
-    (next) => {
-        viewerOffsetForm.viewer_offset = next ?? 0;
-        viewerOffsetForm.defaults({ viewer_offset: next ?? 0 });
-    },
-);
-
 const QUICK_SECONDS = [30, 45, 60, 90, 120];
 const minSeconds = Math.max(1, Math.floor(props.durationLimits.minSeconds));
 const maxSeconds = Math.max(minSeconds, Math.floor(props.durationLimits.maxSeconds));
 
-const startForm = useForm<{ name: string; duration_seconds: number; continuous: boolean }>({
+const initialAutoRollover = props.eventRoom.auto_rollover_seconds !== null;
+const initialDuration = props.eventRoom.auto_rollover_seconds ?? 60;
+
+const startForm = useForm<{ name: string; duration_seconds: number; auto_rollover: boolean }>({
     name: '',
-    duration_seconds: 60,
-    continuous: false,
+    duration_seconds: initialDuration,
+    auto_rollover: initialAutoRollover,
 });
 
 function setDurationSeconds(s: number) {
     const clamped = Math.max(minSeconds, Math.min(maxSeconds, Math.round(s)));
     startForm.duration_seconds = clamped;
-    startForm.continuous = false;
 }
 
 function submitStart() {
     startForm
         .transform((data) => {
-            // Continuous mode: omit duration_seconds entirely so the backend
-            // creates an open-ended round (no auto_end_at).
-            if (data.continuous) {
-                return { name: data.name } as Record<string, unknown>;
-            }
             const seconds = Math.max(
                 minSeconds,
                 Math.min(maxSeconds, Math.round(Number(data.duration_seconds) || 0)),
@@ -290,6 +264,7 @@ function submitStart() {
             return {
                 name: data.name,
                 duration_seconds: seconds,
+                auto_rollover: !!data.auto_rollover,
             };
         })
         .post(EventRoundController.start.url({ event_room: props.eventRoom.id }), {
@@ -364,55 +339,17 @@ function submitEnd() {
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div class="rounded-xl border bg-card p-3">
-                <p class="text-xs text-muted-foreground">Người đang xem (hiển thị)</p>
+                <p class="text-xs text-muted-foreground">Người đang xem (thật)</p>
                 <p class="mt-1 flex items-center gap-1 text-2xl font-bold">
                     <Users class="size-5 text-amber-700" />
-                    {{ displayedPresenceCount }}
-                </p>
-                <p class="mt-1 text-xs text-muted-foreground">
-                    Thật <span class="font-semibold text-foreground">{{ presenceCount }}</span>
-                    <span v-if="eventRoom.viewer_offset > 0">
-                        + bù
-                        <span class="font-semibold text-amber-700">
-                            {{ eventRoom.viewer_offset }}
-                        </span>
-                    </span>
+                    {{ presenceCount }}
                 </p>
                 <p v-if="presenceNames.length" class="mt-1 truncate text-xs text-muted-foreground"
                     :title="presenceNames.join(' · ')">
                     {{ presenceNames.slice(0, 6).join(' · ') }}
                     <span v-if="presenceNames.length > 6"> +{{ presenceNames.length - 6 }}…</span>
-                </p>
-            </div>
-            <div class="rounded-xl border bg-card p-3">
-                <div class="flex items-center justify-between gap-2">
-                    <p class="text-xs text-muted-foreground">Số người ảo (bù vào hiển thị)</p>
-                    <span v-if="viewerOffsetForm.recentlySuccessful"
-                        class="inline-flex items-center gap-1 text-xs text-emerald-700">
-                        <Check class="size-3.5" /> Đã lưu
-                    </span>
-                </div>
-                <form class="mt-1 flex items-center gap-2" @submit.prevent="submitViewerOffset">
-                    <Input
-                        v-model.number="viewerOffsetForm.viewer_offset"
-                        type="number"
-                        min="0"
-                        max="999999"
-                        class="h-9 max-w-[140px] font-mono text-lg font-semibold"
-                    />
-                    <Button type="submit" size="sm" variant="secondary"
-                        :disabled="viewerOffsetForm.processing || !viewerOffsetForm.isDirty">
-                        {{ viewerOffsetForm.processing ? 'Đang lưu…' : 'Lưu' }}
-                    </Button>
-                </form>
-                <p v-if="viewerOffsetForm.errors.viewer_offset"
-                    class="mt-1 text-xs text-red-600">
-                    {{ viewerOffsetForm.errors.viewer_offset }}
-                </p>
-                <p v-else class="mt-1 text-xs text-muted-foreground">
-                    Cộng thêm vào số người xem hiển thị cho user.
                 </p>
             </div>
             <div class="rounded-xl border bg-card p-3">
@@ -435,6 +372,11 @@ function submitEnd() {
                     </p>
                     <p class="text-2xl font-bold text-amber-950">
                         {{ liveOpenRound.name }}
+                    </p>
+                    <p v-if="eventRoom.auto_rollover_seconds !== null"
+                        class="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-200/70 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                        <Repeat class="size-3" />
+                        Tự mở phiên kế · {{ eventRoom.auto_rollover_seconds }}s
                     </p>
                 </div>
                 <div v-if="remainingLabel !== null"
@@ -489,7 +431,8 @@ function submitEnd() {
             <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
                 Đặt tên phiên (tuỳ chọn) và thời lượng (giây). Khi hết giờ, phiên sẽ tự động kết thúc.
-                Bật <strong>Phiên chạy liên tục</strong> nếu muốn phiên không tự kết thúc.
+                Bật <strong>Tự mở phiên tiếp theo khi hết giờ</strong> để các phiên xoay vòng liên tục —
+                bấm <em>Kết thúc phiên</em> để dừng vòng lặp.
             </p>
 
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
@@ -499,18 +442,18 @@ function submitEnd() {
                 </div>
 
                 <div>
-                    <Label for="duration" :class="startForm.continuous ? 'opacity-50' : ''">
+                    <Label for="duration">
                         Thời lượng (giây) — {{ minSeconds }}–{{ maxSeconds }}
                     </Label>
                     <Input id="duration" v-model.number="startForm.duration_seconds" type="number" :min="minSeconds"
-                        :max="maxSeconds" class="mt-1" :disabled="startForm.continuous" />
+                        :max="maxSeconds" class="mt-1" />
                     <div class="mt-2 flex flex-wrap gap-1.5">
                         <button v-for="s in QUICK_SECONDS" :key="s" type="button"
-                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                            :class="!startForm.continuous && startForm.duration_seconds === s
+                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs"
+                            :class="startForm.duration_seconds === s
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-stone-50 text-black'"
-                            :disabled="startForm.continuous" @click="setDurationSeconds(s)">
+                            @click="setDurationSeconds(s)">
                             {{ s }}s
                         </button>
                     </div>
@@ -521,9 +464,12 @@ function submitEnd() {
             </div>
 
             <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-stone-700">
-                <Checkbox :model-value="startForm.continuous"
-                    @update:model-value="(v) => (startForm.continuous = v === true)" />
-                <span>Phiên chạy liên tục (không tự kết thúc)</span>
+                <Checkbox :model-value="startForm.auto_rollover"
+                    @update:model-value="(v) => (startForm.auto_rollover = v === true)" />
+                <span class="inline-flex items-center gap-1">
+                    <Repeat class="size-3.5 text-amber-700" />
+                    Tự mở phiên tiếp theo khi hết giờ
+                </span>
             </label>
 
             <Button class="mt-4 w-full bg-amber-700 text-white hover:bg-amber-800 sm:w-auto"

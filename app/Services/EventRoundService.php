@@ -24,6 +24,7 @@ class EventRoundService
         User $admin,
         ?string $displayName = null,
         ?int $durationSeconds = null,
+        bool $autoRollover = false,
     ): EventRound {
         if (! $admin->hasRole('admin')) {
             abort(403);
@@ -43,7 +44,52 @@ class EventRoundService
             }
         }
 
-        $round = DB::transaction(function () use ($room, $displayName, $durationSeconds) {
+        if ($autoRollover && $durationSeconds === null) {
+            throw ValidationException::withMessages([
+                'duration_seconds' => ['Cần đặt thời lượng để bật tự mở phiên tiếp theo.'],
+            ]);
+        }
+
+        return $this->openRoundOnRoom(
+            $room,
+            $displayName,
+            $durationSeconds,
+            $autoRollover ? $durationSeconds : null,
+        );
+    }
+
+    /**
+     * Auto-open the next round in a rollover loop. No admin check — this is
+     * only invoked from the queued AutoEndExpiredRoundJob right after the
+     * previous round closed and we already verified the room still has
+     * auto_rollover_seconds configured.
+     */
+    public function startRolloverRound(EventRoom $room): ?EventRound
+    {
+        $duration = $room->auto_rollover_seconds === null
+            ? null
+            : (int) $room->auto_rollover_seconds;
+
+        if ($duration === null) {
+            return null;
+        }
+
+        try {
+            return $this->openRoundOnRoom($room, null, $duration, $duration);
+        } catch (ValidationException) {
+            // Room turned off, or another round is already open — drop the
+            // rollover silently to avoid retry storms from the queue.
+            return null;
+        }
+    }
+
+    private function openRoundOnRoom(
+        EventRoom $room,
+        ?string $displayName,
+        ?int $durationSeconds,
+        ?int $rolloverSeconds,
+    ): EventRound {
+        $round = DB::transaction(function () use ($room, $displayName, $durationSeconds, $rolloverSeconds) {
             /** @var EventRoom $lockedRoom */
             $lockedRoom = EventRoom::query()->whereKey($room->getKey())->lockForUpdate()->firstOrFail();
 
@@ -83,6 +129,13 @@ class EventRoundService
                 'ended_at' => null,
             ]);
 
+            // Persist rollover preference on the room — the AutoEndExpiredRoundJob
+            // reads this AFTER closing the round to decide whether to re-open.
+            if ($lockedRoom->auto_rollover_seconds !== $rolloverSeconds) {
+                $lockedRoom->auto_rollover_seconds = $rolloverSeconds;
+                $lockedRoom->save();
+            }
+
             event(new SukienRoundStarted(
                 (int) $lockedRoom->getKey(),
                 (int) $round->getKey(),
@@ -111,18 +164,36 @@ class EventRoundService
     }
 
     /**
-     * Close a round without admin authorization. Used by the auto-end job
-     * once the configured duration elapses; safe to call when the round is
-     * already closed (it becomes a no-op).
+     * Close a round without admin authorization. Used whenever an expired
+     * round is observed (queue worker, HTTP lazy-close paths). Safe to call
+     * when the round is already closed (it becomes a no-op). When the round
+     * is actually transitioned and the room has auto-rollover configured,
+     * the next round is opened immediately so the loop keeps running even
+     * without an active queue worker.
      */
     public function autoEndRound(EventRound $round): void
     {
-        $this->finalizeRound($round, throwIfClosed: false);
+        $closedNow = $this->finalizeRound($round, throwIfClosed: false);
+
+        if (! $closedNow) {
+            return;
+        }
+
+        $room = $round->eventRoom?->fresh();
+        if ($room === null) {
+            return;
+        }
+
+        if ($room->auto_rollover_seconds === null || ! $room->is_active) {
+            return;
+        }
+
+        $this->startRolloverRound($room);
     }
 
-    private function finalizeRound(EventRound $round, bool $throwIfClosed): void
+    private function finalizeRound(EventRound $round, bool $throwIfClosed): bool
     {
-        DB::transaction(function () use ($round, $throwIfClosed) {
+        return DB::transaction(function () use ($round, $throwIfClosed): bool {
             /** @var EventRound $locked */
             $locked = EventRound::query()->whereKey($round->getKey())->lockForUpdate()->firstOrFail();
 
@@ -133,7 +204,7 @@ class EventRoundService
                     ]);
                 }
 
-                return;
+                return false;
             }
 
             $locked->status = EventRoundStatus::Closed;
@@ -145,6 +216,8 @@ class EventRoundService
                 (int) $locked->getKey(),
                 (int) $locked->round_number,
             ));
+
+            return true;
         });
     }
 }

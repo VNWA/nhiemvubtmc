@@ -14,7 +14,13 @@ return new class extends Migration
             $table->string('slug', 64)->unique();
             $table->string('avatar_path')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('viewer_offset')->default(0);
+            // When non-null, indicates that the most recently configured
+            // session uses an auto-rollover schedule: as soon as the current
+            // round closes (manually-via-timer or via the auto-end job),
+            // a brand-new round is opened automatically with this duration.
+            // The admin clears the loop by pressing "Kết thúc phiên" — the
+            // controller resets this column back to NULL.
+            $table->unsignedSmallInteger('auto_rollover_seconds')->nullable();
             $table->timestamps();
         });
 

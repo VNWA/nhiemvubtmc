@@ -114,7 +114,6 @@ Route::middleware(['auth', 'verified', 'role:admin|staff'])
                 Route::post('/', [EventRoomController::class, 'store'])->name('store');
                 Route::get('{event_room}/edit', [EventRoomController::class, 'edit'])->name('edit');
                 Route::get('{event_room}/manage', [EventRoomController::class, 'manage'])->name('manage');
-                Route::patch('{event_room}/viewer-offset', [EventRoomController::class, 'updateViewerOffset'])->name('viewer-offset');
                 Route::match(['put', 'patch'], '{event_room}', [EventRoomController::class, 'update'])->name('update');
                 Route::delete('{event_room}', [EventRoomController::class, 'destroy'])->name('destroy');
                 Route::post('{event_room}/rounds/start', [EventRoundController::class, 'start'])->name('rounds.start');

@@ -21,7 +21,6 @@ class UpdateEventRoomRequest extends FormRequest
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
             'remove_avatar' => ['nullable', 'string', 'in:0,1'],
             'is_active' => ['nullable', 'string', 'in:0,1'],
-            'viewer_offset' => ['nullable', 'integer', 'min:0', 'max:999999'],
         ];
     }
 }

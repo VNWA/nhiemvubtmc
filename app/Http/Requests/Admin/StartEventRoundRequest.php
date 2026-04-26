@@ -25,6 +25,7 @@ class StartEventRoundRequest extends FormRequest
                 'min:'.EventRoundService::MIN_DURATION_SECONDS,
                 'max:'.EventRoundService::MAX_DURATION_SECONDS,
             ],
+            'auto_rollover' => ['nullable', 'boolean'],
         ];
     }
 }
