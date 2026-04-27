@@ -103,6 +103,7 @@ watch([actionFilter, dateFrom, dateTo], () => pushFilters());
 const hasFilters = computed(() => {
     const q = search.value.trim();
     const hasAction = actionFilter.value !== '' && actionFilter.value !== '__all';
+
     return !!(q || hasAction || dateFrom.value || dateTo.value);
 });
 
@@ -130,8 +131,23 @@ function actionBadgeClass(action: string): string {
         return 'bg-violet-100 text-violet-900 dark:bg-violet-500/15 dark:text-violet-200';
     }
 
-    if (action === 'user.login' || action === 'user.password_changed' || action === 'user.2fa_cleared') {
+    /** Đăng nhập: nền trắng, chữ tối */
+    if (action === 'user.login') {
+        return 'border border-stone-200/90 bg-white text-stone-900 dark:border-stone-500/25 dark:bg-stone-100 dark:text-stone-900';
+    }
+
+    if (action === 'user.password_changed' || action === 'user.2fa_cleared') {
         return 'bg-indigo-100 text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-200';
+    }
+
+    /** Đóng băng: đỏ */
+    if (action === 'wallet.freeze') {
+        return 'bg-rose-100 text-rose-900 dark:bg-rose-500/20 dark:text-rose-100';
+    }
+
+    /** Mở đóng băng: xanh */
+    if (action === 'wallet.unfreeze') {
+        return 'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100';
     }
 
     if (action.startsWith('wallet.')) {

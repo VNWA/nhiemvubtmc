@@ -652,9 +652,7 @@ async function loadMoreRounds() {
                         <History class="size-4" />
                         Các phiên đã kết thúc
                     </h3>
-                    <p class="mt-0.5 text-[11px] text-stone-500">
-                        Kỳ đếm #{{ eventRoom.round_session }} — chỉ liệt kê phiên thuộc kỳ này
-                    </p>
+
                 </div>
                 <span class="shrink-0 text-[11px] text-stone-500">{{ displayedRounds.length }}/{{
                     recentRoundsTotal }}</span>
@@ -663,7 +661,7 @@ async function loadMoreRounds() {
                 <li v-for="h in displayedRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1.5">
                     <span class="text-xs text-stone-700">Phiên #{{ h.round_number }}</span>
-                    <span class="text-[11px] text-stone-500">{{ h.name }}</span>
+                    <span class="text-[11px] text-stone-500">Đã kết thúc</span>
                 </li>
             </ul>
             <p v-else class="text-xs text-stone-500">Chưa có phiên nào kết thúc.</p>

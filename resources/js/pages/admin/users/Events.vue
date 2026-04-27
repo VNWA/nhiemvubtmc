@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { ArrowLeft, CalendarHeart } from 'lucide-vue-next';
-import { reactive, watch } from 'vue';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { ArrowLeft, CalendarHeart, Search } from 'lucide-vue-next';
+import { computed, reactive, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import UserEventController from '@/actions/App/Http/Controllers/Admin/UserEventController';
 import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
@@ -11,6 +11,7 @@ import InputError from '@/components/InputError.vue';
 import Pagination from '@/components/Pagination.vue';
 import type { PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -59,6 +60,7 @@ const props = defineProps<{
         available_vnd: number;
     };
     bets: Paginator;
+    filters: { q: string; per_page: number };
     statusOptions: StatusOption[];
 }>();
 
@@ -91,6 +93,79 @@ watch(
     },
     { deep: true },
 );
+
+const searchQ = ref(props.filters.q ?? '');
+const perPageModel = ref(String(props.filters.per_page ?? 20));
+
+watch(
+    () => props.filters,
+    (f) => {
+        searchQ.value = f.q ?? '';
+        perPageModel.value = String(f.per_page ?? 20);
+    },
+    { deep: true },
+);
+
+const perPageNumber = computed(() => {
+    const n = Number.parseInt(perPageModel.value, 10);
+
+    return Number.isFinite(n) ? n : 20;
+});
+
+const onlyList = [
+    'bets',
+    'user',
+    'statusOptions',
+    'filters',
+] as const;
+
+function applyListFilters() {
+    router.get(
+        UserEventController.index.url(
+            { user: props.user.id },
+            {
+                query: {
+                    q: searchQ.value.trim() || undefined,
+                    per_page: perPageNumber.value,
+                    page: 1,
+                },
+            },
+        ),
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: [...onlyList],
+        },
+    );
+}
+
+function onPerPageChange() {
+    applyListFilters();
+}
+
+const commissionPcts = [30, 50, 75, 100] as const;
+
+function setCommissionPct(bet: Bet, pct: number) {
+    const d = drafts[bet.id];
+
+    if (!d) {
+        return;
+    }
+
+    d.commission_vnd = Math.round((bet.amount_vnd * pct) / 100);
+}
+
+function setRefundToFullFee(bet: Bet) {
+    const d = drafts[bet.id];
+
+    if (!d) {
+        return;
+    }
+
+    d.refund_vnd = bet.amount_vnd;
+}
 
 function netForDraft(bet: Bet): number {
     const draft = drafts[bet.id];
@@ -128,7 +203,7 @@ defineOptions({
                 "
             />
             <div class="flex flex-wrap items-center justify-end gap-2">
-                <AdminListReloadButton :only="['bets', 'user', 'statusOptions']" />
+                <AdminListReloadButton :only="[...onlyList]" />
                 <Button variant="secondary" as-child>
                     <Link :href="UserController.index.url()">
                         <ArrowLeft class="size-4" />
@@ -140,11 +215,53 @@ defineOptions({
 
         <div class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border">
             <div
-                class="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-4 py-3 text-sm dark:border-sidebar-border">
+                class="flex flex-col gap-3 border-b border-border/60 bg-muted/30 px-4 py-3 text-sm dark:border-sidebar-border sm:flex-row sm:items-end sm:justify-between">
                 <p class="flex items-center gap-2 text-muted-foreground">
                     <CalendarHeart class="size-4" />
-                    Tổng <span class="font-semibold text-foreground">{{ bets.total }}</span> phiên tham gia
+                    Tổng
+                    <span class="font-semibold text-foreground">{{ bets.total }}</span>
+                    phiên tham gia
                 </p>
+                <div class="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-end">
+                    <div class="grid flex-1 gap-1">
+                        <label class="text-[10px] font-medium text-muted-foreground" for="events-search"
+                            >Tìm theo phòng, phiên, mã cược</label
+                        >
+                        <div class="flex gap-1.5">
+                            <Input
+                                id="events-search"
+                                v-model="searchQ"
+                                type="search"
+                                class="h-8 text-xs"
+                                placeholder="Ví dụ: Phòng, slug, số phiên, ID cược…"
+                                @keydown.enter.prevent="applyListFilters"
+                            />
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                class="h-8 shrink-0 gap-1 px-2.5 text-xs"
+                                @click="applyListFilters"
+                            >
+                                <Search class="size-3.5" />
+                                Tìm
+                            </Button>
+                        </div>
+                    </div>
+                    <div class="grid w-full gap-1 sm:w-28">
+                        <span class="text-[10px] font-medium text-muted-foreground">/ trang</span>
+                        <Select v-model="perPageModel" @update:model-value="onPerPageChange">
+                            <SelectTrigger class="h-8 text-xs">
+                                <SelectValue placeholder="Mỗi trang" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="n in [10, 15, 20, 30, 50]" :key="n" :value="String(n)">
+                                    {{ n }} phiên
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
             </div>
 
             <div v-if="bets.data.length === 0" class="px-4 py-10 text-center text-sm text-muted-foreground">
@@ -187,15 +304,51 @@ defineOptions({
                                 </div>
                             </div>
                             <div class="grid gap-1">
-                                <Label :for="`refund-${bet.id}`" class="text-[11px]">Hoàn trả</Label>
-                                <CurrencyInput :id="`refund-${bet.id}`" v-model="drafts[bet.id].refund_vnd"
-                                    name="refund_vnd" :max="1_000_000_000" placeholder="0" />
+                                <div class="flex items-end justify-between gap-1.5">
+                                    <Label :for="`refund-${bet.id}`" class="text-[11px]">Hoàn trả</Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        class="h-5 shrink-0 px-1.5 text-[9px] font-medium leading-none"
+                                        title="Hoàn bằng toàn bộ phí tham gia"
+                                        @click="setRefundToFullFee(bet)"
+                                    >
+                                        Tất cả
+                                    </Button>
+                                </div>
+                                <CurrencyInput
+                                    :id="`refund-${bet.id}`"
+                                    v-model="drafts[bet.id].refund_vnd"
+                                    name="refund_vnd"
+                                    :max="1_000_000_000"
+                                    placeholder="0"
+                                />
                                 <InputError :message="errors.refund_vnd" />
                             </div>
                             <div class="grid gap-1">
-                                <Label :for="`commission-${bet.id}`" class="text-[11px]">Hoa hồng</Label>
-                                <CurrencyInput :id="`commission-${bet.id}`" v-model="drafts[bet.id].commission_vnd"
-                                    name="commission_vnd" :max="1_000_000_000" placeholder="0" />
+                                <div class="flex flex-wrap items-end justify-between gap-y-0.5">
+                                    <Label :for="`commission-${bet.id}`" class="text-[11px]">Hoa hồng</Label>
+                                    <div class="flex flex-wrap justify-end gap-0.5">
+                                        <Button
+                                            v-for="p in commissionPcts"
+                                            :key="p"
+                                            type="button"
+                                            variant="outline"
+                                            class="h-5 min-w-7 px-1 text-[9px] font-medium leading-none"
+                                            :title="`${p}% phí tham gia`"
+                                            @click="setCommissionPct(bet, p)"
+                                        >
+                                            {{ p }}%
+                                        </Button>
+                                    </div>
+                                </div>
+                                <CurrencyInput
+                                    :id="`commission-${bet.id}`"
+                                    v-model="drafts[bet.id].commission_vnd"
+                                    name="commission_vnd"
+                                    :max="1_000_000_000"
+                                    placeholder="0"
+                                />
                                 <InputError :message="errors.commission_vnd" />
                             </div>
                             <div class="grid gap-1">
@@ -225,7 +378,7 @@ defineOptions({
             <Pagination
                 v-if="bets.total > 0"
                 :meta="bets"
-                :only="['bets', 'user', 'statusOptions']"
+                :only="[...onlyList]"
                 item-label="phiên"
             />
         </div>

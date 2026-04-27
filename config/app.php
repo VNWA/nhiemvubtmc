@@ -127,20 +127,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Throttled "last user access" (Truy cập cuối) for authenticated web requests
+    | Cập nhật "truy cập cuối" (UpdateUserLastAccessJob)
     |--------------------------------------------------------------------------
     |
-    | Minimum seconds between writing last_login_at / last_login_ip for a user, to
-    | keep DB and session light. Throttling uses Cache, not the session, so "skip"
-    | requests do not grow session data. Lần đăng nhập bằng mật khẩu vẫn cập nhật
-    | tức thời + ActivityLogger::user.login như cũ.
+    | Mỗi lần request qua middleware `user.last_access` (web.php, settings) dispatch
+    | job cập nhật last_login_at / last_login_ip — không chặn theo thời gian.
+    | Đăng nhập: UpdateUserOnLogin ghi trực tiếp 2 cột (saveQuietly) + activity log.
     |
-    | Route names in user_last_access_ignored_routes and path patterns are skipped
-    | (e.g. JSON/polling) — add more as needed to avoid hot endpoints.
+    | Bỏ qua một số route (ví dụ JSON phân trang ví) để tránh dồn queue.
     |
     */
-
-    'user_last_access_min_interval_seconds' => (int) env('USER_LAST_ACCESS_MIN_INTERVAL', 1800),
 
     'user_last_access_ignored_routes' => [
         'account.wallet.data',

@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'user.last_access' => UpdateUserLastAccess::class,
         ]);
 
         $middleware->web(append: [
@@ -35,7 +36,6 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureUserIsActive::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            UpdateUserLastAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

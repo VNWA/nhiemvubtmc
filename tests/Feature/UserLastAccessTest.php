@@ -15,7 +15,7 @@ class UserLastAccessTest extends TestCase
         $this->get(route('login'))->assertOk();
     }
 
-    public function test_authenticated_request_updates_truy_cap_cuoi_at_most_once_per_interval(): void
+    public function test_each_non_ignored_request_triggers_fresh_truy_cap_cuoi(): void
     {
         $stale = now()->subDay();
         $user = User::factory()->create([
@@ -32,12 +32,7 @@ class UserLastAccessTest extends TestCase
         $t1 = $user->last_login_at->getTimestamp();
         $this->assertNotEmpty($user->last_login_ip);
 
-        $this->get(route('home'));
-        $user->refresh();
-        $this->assertSame($t1, $user->last_login_at->getTimestamp());
-
-        $this->travel(config('app.user_last_access_min_interval_seconds') + 1)->seconds();
-
+        $this->travel(2)->seconds();
         $this->get(route('home'));
         $user->refresh();
         $this->assertGreaterThan($t1, $user->last_login_at->getTimestamp());

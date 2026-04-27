@@ -28,14 +28,41 @@ class UserEventController extends Controller
     {
         $this->authorize('update', $user);
 
+        $search = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->integer('per_page', 20);
+        $perPage = max(5, min($perPage, 100));
+
         $bets = EventBet::query()
             ->with([
                 'eventRound:id,event_room_id,round_number,name',
                 'eventRound.eventRoom:id,name,slug',
             ])
             ->where('user_id', $user->getKey())
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $term = '%'.str_replace(
+                        ['\\', '%', '_'],
+                        ['\\\\', '\%', '\_'],
+                        mb_strtolower($search, 'UTF-8')
+                    ).'%';
+
+                    $q->whereHas('eventRound.eventRoom', function ($r) use ($term) {
+                        $r->whereRaw('LOWER(name) LIKE ?', [$term])
+                            ->orWhereRaw('LOWER(slug) LIKE ?', [$term]);
+                    })->orWhereHas('eventRound', function ($r) use ($term, $search) {
+                        $r->whereRaw('LOWER(COALESCE(name, \'\')) LIKE ?', [$term]);
+                        if (ctype_digit($search) && (int) $search > 0) {
+                            $r->orWhere('round_number', (int) $search);
+                        }
+                    });
+
+                    if (ctype_digit($search) && (int) $search > 0) {
+                        $q->orWhere('id', (int) $search);
+                    }
+                });
+            })
             ->orderByDesc('id')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString()
             ->through(fn (EventBet $bet) => $this->formatBet($bet));
 
@@ -49,6 +76,10 @@ class UserEventController extends Controller
                 'available_vnd' => $user->availableVnd(),
             ],
             'bets' => $bets,
+            'filters' => [
+                'q' => $search,
+                'per_page' => $perPage,
+            ],
             'statusOptions' => collect(EventBetStatus::cases())
                 ->map(fn (EventBetStatus $s) => ['value' => $s->value, 'label' => $s->label()])
                 ->values(),

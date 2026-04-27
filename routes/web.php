@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AppearanceController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventRoomController;
 use App\Http\Controllers\Admin\EventRoundController;
 use App\Http\Controllers\Admin\StaffController;
@@ -15,9 +16,8 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\Sukien\EventBetController;
 use App\Http\Controllers\Sukien\SukienEventRoomController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'user.last_access'])->group(function () {
     Route::controller(ClientController::class)->group(function () {
         Route::get('/', 'index')->name('home');
     });
@@ -51,13 +51,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified', 'role:admin|staff'])
+Route::middleware(['auth', 'verified', 'role:admin|staff', 'user.last_access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('dashboard', function () {
-            return Inertia::render('admin/Dashboard');
-        })->name('dashboard');
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::redirect('/', '/admin/users')->name('home');
 
         Route::prefix('users')->name('users.')->group(function () {

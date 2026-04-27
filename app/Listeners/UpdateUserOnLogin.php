@@ -2,7 +2,6 @@
 
 namespace App\Listeners;
 
-use App\Jobs\UpdateUserLastAccessJob;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Auth\Events\Login;
@@ -19,10 +18,12 @@ class UpdateUserOnLogin
         }
 
         $ip = Request::ip();
-        UpdateUserLastAccessJob::dispatch(
-            userId: (int) $user->getKey(),
-            ip: is_string($ip) ? $ip : null,
-        );
+        $ipValue = is_string($ip) ? $ip : null;
+
+        $user->forceFill([
+            'last_login_at' => now(),
+            'last_login_ip' => $ipValue,
+        ])->saveQuietly();
 
         ActivityLogger::log(
             action: 'user.login',

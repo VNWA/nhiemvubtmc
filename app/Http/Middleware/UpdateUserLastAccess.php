@@ -6,17 +6,14 @@ use App\Jobs\UpdateUserLastAccessJob;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class UpdateUserLastAccess
 {
-    private const CACHE_PREFIX = 'user.last_access.';
-
     /**
-     * Throttled "last access" (last_login_at / last_login_ip) for authenticated web
-     * requests. Throttle is per user via Cache, not the session, to avoid extra
-     * session table writes; interval defaults to 30 min (config).
+     * Mỗi request (sau khi xử lý) qua route có middleware này: dispatch job cập nhật
+     * last_login_at / last_login_ip — không chặn theo khoảng thời gian.
+     * Một số route (poll/JSON) có thể loại trừ trong config để tránh spam queue.
      *
      * @param  Closure(Request): (Response)  $next
      */
@@ -24,30 +21,17 @@ class UpdateUserLastAccess
     {
         $response = $next($request);
 
-        if ($this->isIgnoredForLastAccess($request)) {
-            return $response;
-        }
-
         $user = $request->user();
 
         if (! $user instanceof User) {
             return $response;
         }
 
-        $interval = max(1, (int) config('app.user_last_access_min_interval_seconds', 1800));
-        $cacheKey = self::CACHE_PREFIX.$user->getKey();
-
-        if (Cache::has($cacheKey)) {
+        if ($this->isIgnoredForLastAccess($request)) {
             return $response;
         }
 
         $ip = $request->ip();
-
-        Cache::put(
-            $cacheKey,
-            now()->getTimestamp(),
-            $interval,
-        );
 
         UpdateUserLastAccessJob::dispatch(
             userId: (int) $user->getKey(),

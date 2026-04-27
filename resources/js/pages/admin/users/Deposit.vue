@@ -166,6 +166,50 @@ function pickQuick(v: number) {
     adjustAmount.value = cap < Number.MAX_SAFE_INTEGER ? Math.min(v, cap) : v;
 }
 
+/** Chỉ cho trừ / đóng băng / mở đóng băng — không dùng cho nạp hoặc hoa hồng (không có trần hợp lý). */
+const showQuickMaxButton = computed(
+    () =>
+        adjustOperation.value === 'debit'
+        || adjustOperation.value === 'freeze'
+        || adjustOperation.value === 'unfreeze',
+);
+
+const maxQuickAllDisabled = computed(() => {
+    if (!showQuickMaxButton.value) {
+        return true;
+    }
+
+    const cap = maxAmountThisOp.value;
+
+    return cap <= 0;
+});
+
+const maxQuickAllTitle = computed(() => {
+    if (adjustOperation.value === 'debit') {
+        return 'Điền toàn bộ tổng số dư hiện tại';
+    }
+
+    if (adjustOperation.value === 'freeze') {
+        return 'Điền toàn bộ số dư khả dụng (tối đa có thể đóng băng)';
+    }
+
+    if (adjustOperation.value === 'unfreeze') {
+        return 'Điền toàn bộ số tiền đang đóng băng';
+    }
+
+    return '';
+});
+
+function pickMaxAmount() {
+    const cap = maxAmountThisOp.value;
+
+    if (cap <= 0) {
+        return;
+    }
+
+    adjustAmount.value = cap;
+}
+
 function resetAdjust() {
     adjustAmount.value = 0;
     adjustOperation.value = 'credit';
@@ -557,12 +601,25 @@ defineOptions({
                             <CurrencyInput id="amount_vnd" v-model="adjustAmount" name="amount_vnd"
                                 placeholder="VD: 100.000" :aria-invalid="!!errors.amount_vnd" />
                             <InputError :message="errors.amount_vnd" />
-                            <div class="flex flex-wrap gap-1.5 pt-1">
+                            <div class="flex flex-wrap items-center gap-1.5 pt-1">
                                 <button v-for="v in quickAmounts" :key="v" type="button" class="quick-btn"
                                     @click="pickQuick(v)">
                                     {{ formatVnd(v) }}
                                 </button>
+                                <button
+                                    v-if="showQuickMaxButton"
+                                    type="button"
+                                    class="quick-btn quick-btn--max"
+                                    :disabled="maxQuickAllDisabled"
+                                    :title="maxQuickAllTitle"
+                                    @click="pickMaxAmount"
+                                >
+                                    Toàn bộ
+                                </button>
                             </div>
+                            <p v-if="showQuickMaxButton" class="text-[10px] text-muted-foreground">
+                                «Toàn bộ» = điền nhanh mức tối đa: trừ tiền → tổng số dư; đóng băng → số khả dụng; mở đóng băng → số đang đóng băng.
+                            </p>
                         </div>
 
                         <div class="grid gap-1.5">
@@ -954,6 +1011,37 @@ defineOptions({
     background: #2563eb;
     color: #ffffff;
     border-color: #2563eb;
+}
+
+.quick-btn--max {
+    border-style: dashed;
+    border-color: rgba(180, 83, 9, 0.45);
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.quick-btn--max:hover:not(:disabled) {
+    background: #f59e0b;
+    color: #ffffff;
+    border-color: #d97706;
+    border-style: solid;
+}
+
+.quick-btn--max:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+:global(.dark) .quick-btn--max {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+    border-color: rgba(251, 191, 36, 0.45);
+}
+
+:global(.dark) .quick-btn--max:hover:not(:disabled) {
+    background: #d97706;
+    color: #fffbeb;
+    border-color: #d97706;
 }
 
 .submit-credit {
