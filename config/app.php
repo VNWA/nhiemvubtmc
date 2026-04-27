@@ -65,9 +65,11 @@ return [
     |
     */
 
-    // Backend stores everything in UTC. The displayed timezone (Asia/Ho_Chi_Minh)
-    // is applied on the frontend only — see resources/js/lib/datetime.ts.
+    // Backend / DB thường dùng UTC. Báo cáo tổng hợp theo “ngày tại VN” dùng múi
+    // `display_timezone` (Dashboard, v.v.) để Hôm nay / tháng này khớp lịch người dùng.
     'timezone' => env('APP_TIMEZONE', 'UTC'),
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Ho_Chi_Minh'),
 
     /*
     |--------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import WithdrawalController from '@/actions/App/Http/Controllers/Admin/WithdrawalController';
+import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import { formatVnd } from '@/lib/vnd';
 import { dashboard } from '@/routes/admin';
 
@@ -73,6 +74,16 @@ const props = defineProps<{
     operations: { pending_withdrawals: number; open_event_rounds: number };
     recent: { withdrawals: RecentW[]; users: RecentU[]; activities: RecentA[] };
 }>();
+
+const reloadOnly = [
+    'scope',
+    'period',
+    'quick',
+    'overview',
+    'chart_series',
+    'operations',
+    'recent',
+] as const;
 
 const currentPeriod = ref(props.period.key);
 const customFrom = ref(props.period.date_from);
@@ -192,13 +203,20 @@ defineOptions({
                         Dữ liệu theo kỳ: {{ period.label }}
                     </p>
                 </div>
-                <p
-                    v-if="scope.is_staff_only"
-                    class="text-xs text-amber-700 dark:text-amber-400/90"
+                <div
+                    class="flex flex-wrap items-center justify-end gap-2"
                 >
-                    Bạn đang xem số liệu của khách hàng do bạn tạo (nhân
-                    viên).
-                </p>
+                    <p
+                        v-if="scope.is_staff_only"
+                        class="text-xs text-amber-700 dark:text-amber-400/90"
+                    >
+                        Bạn đang xem số liệu của khách hàng do bạn tạo (nhân
+                        viên).
+                    </p>
+                    <AdminListReloadButton
+                        :only="[...reloadOnly]"
+                    />
+                </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">

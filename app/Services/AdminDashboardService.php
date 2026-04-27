@@ -202,7 +202,7 @@ class AdminDashboardService
      */
     private function resolveRange(string $period, ?string $dateFrom, ?string $dateTo): array
     {
-        $tz = (string) config('app.timezone', 'UTC');
+        $tz = (string) config('app.display_timezone', 'Asia/Ho_Chi_Minh');
         $now = CarbonImmutable::now($tz);
         $period = in_array($period, ['today', '7d', '30d', 'month', 'custom'], true) ? $period : 'today';
 
