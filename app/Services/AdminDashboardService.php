@@ -99,7 +99,11 @@ class AdminDashboardService
             ->count();
 
         $recentWithdrawals = WithdrawalRequest::query()
-            ->with(['user:id,name,username'])
+            ->with([
+                'user:id,name,username',
+                'processor:id,name,username',
+                'processor.roles',
+            ])
             ->whereIn('user_id', $customerIdsSub)
             ->orderByDesc('id')
             ->limit(8)
@@ -115,17 +119,23 @@ class AdminDashboardService
                 'status' => $r->status->value,
                 'status_label' => $r->status->label(),
                 'created_at' => $r->created_at?->formatVn(),
+                'processor' => $this->serializeStaffActor($r->processor),
             ]);
 
         $recentUsers = $customerQuery->clone()
+            ->with([
+                'creator:id,name,username',
+                'creator.roles',
+            ])
             ->orderByDesc('id')
             ->limit(8)
-            ->get(['id', 'name', 'username', 'created_at'])
+            ->get(['id', 'name', 'username', 'created_at', 'created_by'])
             ->map(fn (User $u) => [
                 'id' => (int) $u->getKey(),
                 'name' => $u->name,
                 'username' => $u->username,
                 'created_at' => $u->created_at?->formatVn(),
+                'creator' => $this->serializeStaffActor($u->creator),
             ]);
 
         $activities = $this->recentActivitiesQuery($actor, $customerIdsSub, $isAdmin)
@@ -203,6 +213,29 @@ class AdminDashboardService
         return (int) User::query()
             ->whereHas('roles', fn ($r) => $r->where('name', 'staff'))
             ->count();
+    }
+
+    /**
+     * @return array{id: int, name: string, username: string, role_label: string|null}|null
+     */
+    private function serializeStaffActor(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        $roleLabel = match (true) {
+            $user->hasRole('admin') => 'Quản trị',
+            $user->hasRole('staff') => 'Nhân viên',
+            default => null,
+        };
+
+        return [
+            'id' => (int) $user->getKey(),
+            'name' => $user->name,
+            'username' => $user->username,
+            'role_label' => $roleLabel,
+        ];
     }
 
     /**

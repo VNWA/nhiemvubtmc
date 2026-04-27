@@ -36,6 +36,13 @@ type ChartPoint = {
     event_bets: number;
 };
 
+type StaffActor = {
+    id: number;
+    name: string;
+    username: string;
+    role_label: string | null;
+};
+
 type RecentW = {
     id: number;
     user: { id: number; name: string; username: string } | null;
@@ -43,6 +50,7 @@ type RecentW = {
     status: string;
     status_label: string;
     created_at: string | null;
+    processor: StaffActor | null;
 };
 
 type RecentU = {
@@ -50,6 +58,7 @@ type RecentU = {
     name: string;
     username: string;
     created_at: string | null;
+    creator: StaffActor | null;
 };
 
 type RecentA = {
@@ -168,6 +177,15 @@ const maxBets = computed(() => {
 });
 
 const chartTrack = 120;
+
+function staffActorLabel(actor: StaffActor | null): string {
+    if (!actor) {
+        return '—';
+    }
+    const role = actor.role_label ? ` (${actor.role_label})` : '';
+
+    return `${actor.username}${role}`;
+}
 
 function barHeightPx(value: number, max: number, track: number = chartTrack): string {
     if (max <= 0 || value === 0) {
@@ -666,6 +684,7 @@ defineOptions({
                                 <th class="px-2 py-1 font-medium">Khách</th>
                                 <th class="px-2 py-1 font-medium">Số tiền</th>
                                 <th class="px-2 py-1 font-medium">Trạng thái</th>
+                                <th class="px-2 py-1 font-medium">Người xử lý</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -683,6 +702,14 @@ defineOptions({
                                 <td
                                     class="px-2 py-1.5"
                                 >{{ w.status_label }}</td>
+                                <td
+                                    class="max-w-40 px-2 py-1.5 text-stone-600 dark:text-stone-400"
+                                    :title="w.processor ? w.processor.name : undefined"
+                                >{{
+                                    w.status === 'pending'
+                                        ? 'Chờ duyệt'
+                                        : staffActorLabel(w.processor)
+                                }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -715,6 +742,7 @@ defineOptions({
                             <tr>
                                 <th class="px-2 py-1 font-medium">Tên</th>
                                 <th class="px-2 py-1 font-medium">Đăng ký</th>
+                                <th class="px-2 py-1 font-medium">Tạo bởi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -733,6 +761,14 @@ defineOptions({
                                 <td
                                     class="px-2 py-1.5 text-stone-500"
                                 >{{ u.created_at ?? '—' }}</td>
+                                <td
+                                    class="max-w-40 px-2 py-1.5 text-stone-600 dark:text-stone-400"
+                                    :title="u.creator ? u.creator.name : undefined"
+                                >{{
+                                    u.creator
+                                        ? staffActorLabel(u.creator)
+                                        : 'Khách tự đăng ký'
+                                }}</td>
                             </tr>
                         </tbody>
                     </table>

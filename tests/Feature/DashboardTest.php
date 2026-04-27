@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\WithdrawalStatus;
 use App\Models\User;
+use App\Models\WithdrawalRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
@@ -69,5 +71,43 @@ class DashboardTest extends TestCase
                 ->component('admin/Dashboard')
                 ->where('scope.is_staff_only', true)
                 ->has('chart_series'));
+    }
+
+    public function test_dashboard_recent_lists_include_staff_actor_payload(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $staff = User::factory()->create(['username' => 'staff_processor']);
+        $staff->assignRole('staff');
+        $customer = User::factory()->create();
+        $customer->assignRole('user');
+        $customerStaffCreated = User::factory()->create([
+            'username' => 'cust_staff',
+            'created_by' => $staff->getKey(),
+        ]);
+        $customerStaffCreated->assignRole('user');
+
+        WithdrawalRequest::query()->create([
+            'user_id' => $customer->getKey(),
+            'amount_vnd' => 100_000,
+            'bank_name' => 'VCB',
+            'bank_account_number' => '001',
+            'bank_account_name' => 'Test',
+            'note' => null,
+            'status' => WithdrawalStatus::Approved->value,
+            'admin_note' => null,
+            'processed_by' => $staff->getKey(),
+            'processed_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('recent.withdrawals.0.processor.username', 'staff_processor')
+                ->where('recent.withdrawals.0.processor.role_label', 'Nhân viên')
+                ->where('recent.users.0.creator.username', 'staff_processor')
+                ->where('recent.users.0.creator.role_label', 'Nhân viên'));
     }
 }
