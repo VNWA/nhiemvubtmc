@@ -52,6 +52,7 @@ class DashboardTest extends TestCase
                 ->where('scope.is_admin', true)
                 ->has('chart_series')
                 ->has('quick')
+                ->has('quick.period_admin_debit_vnd')
                 ->has('recent'));
     }
 

@@ -53,6 +53,14 @@ class AdminDashboardService
                 WalletDirection::Credit,
             ),
             'period_withdrawal_vnd' => (int) $this->sumApprovedWithdrawalsInRange($customerIdsSub, $start, $end),
+            // Trừ tiền trực tiếp bởi admin/nhân viên (không gồm rút tiền do user tạo lệnh).
+            'period_admin_debit_vnd' => (int) $this->sumWalletInRange(
+                $customerIdsSub,
+                $start,
+                $end,
+                WalletSource::AdminDebit,
+                WalletDirection::Debit,
+            ),
             'period_commission_vnd' => (int) $this->sumWalletInRange(
                 $customerIdsSub,
                 $start,
@@ -262,13 +270,83 @@ class AdminDashboardService
         };
     }
 
-    private function sqlDateColumn(string $tableColumn): string
+    /**
+     * Tên cột thời gian lưu UTC (Eloquent) — trả về biểu thức SQL: ngày lịch Y-m-d theo
+     * `config('app.display_timezone')`, trùng cách tính kỳ trên chart (vòng lặp theo múi VN).
+     * Trước đây dùng DATE(created_at) nên theo ngày UTC → nạp 28/4 VN bị tính 27/4.
+     */
+    private function sqlLocalDateForUtcColumn(string $tableColumn): string
     {
-        if (DB::getDriverName() === 'sqlite') {
-            return "strftime('%Y-%m-%d', {$tableColumn})";
+        $driver = DB::getDriverName();
+        $tz = (string) config('app.display_timezone', 'Asia/Ho_Chi_Minh');
+        if (! preg_match('/^[A-Za-z0-9_\/+\-]+$/', $tz)) {
+            $tz = 'Asia/Ho_Chi_Minh';
+        }
+
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            $to = $this->mysqlOffsetStringForTimezone($tz);
+
+            return "DATE(CONVERT_TZ({$tableColumn}, '+00:00', '{$to}'))";
+        }
+
+        if ($driver === 'sqlite') {
+            $modifier = $this->sqliteHoursModifierForTimezone($tz);
+
+            return "date({$tableColumn}, '{$modifier}')";
+        }
+
+        if ($driver === 'pgsql') {
+            if (! preg_match('/^[A-Za-z0-9_\/+\-]+$/', $tz)) {
+                $tz = 'Asia/Ho_Chi_Minh';
+            }
+
+            return "to_char((({$tableColumn} AT TIME ZONE 'UTC') AT TIME ZONE '{$tz}')::date, 'YYYY-MM-DD')";
         }
 
         return "DATE({$tableColumn})";
+    }
+
+    /**
+     * Dạng +HH:MM:SS cho tham số thứ 3 của MySQL CONVERT_TZ (không phụ thuộc bảng time_zone).
+     */
+    private function mysqlOffsetStringForTimezone(string $timeZoneName): string
+    {
+        try {
+            $utc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+            $offsetSeconds = (new \DateTimeZone($timeZoneName))->getOffset($utc);
+            $sign = $offsetSeconds >= 0 ? '+' : '-';
+            $abs = abs($offsetSeconds);
+            $h = intdiv($abs, 3600);
+            $m = intdiv($abs % 3600, 60);
+            $s = $abs % 60;
+
+            return sprintf('%s%02d:%02d:%02d', $sign, $h, $m, $s);
+        } catch (\Throwable) {
+            return '+07:00:00';
+        }
+    }
+
+    /**
+     * Bù giờ UTC → múi hiển thị khi dùng SQLite (test).
+     * Ví dụ: '+7 hours' cho Asia/Ho_Chi_Minh.
+     */
+    private function sqliteHoursModifierForTimezone(string $timeZoneName): string
+    {
+        try {
+            $utc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+            $offsetSeconds = (new \DateTimeZone($timeZoneName))->getOffset($utc);
+            $hours = (int) round($offsetSeconds / 3600);
+            if ($hours === 0) {
+                return '+0 hours';
+            }
+            if ($hours > 0) {
+                return "+{$hours} hours";
+            }
+
+            return (string) $hours.' hours';
+        } catch (\Throwable) {
+            return '+7 hours';
+        }
     }
 
     /**
@@ -314,9 +392,9 @@ class AdminDashboardService
         CarbonImmutable $start,
         CarbonImmutable $end,
     ): array {
-        $wDay = $this->sqlDateColumn('wallet_transactions.created_at');
-        $eDay = $this->sqlDateColumn('event_bets.created_at');
-        $uDay = $this->sqlDateColumn('users.created_at');
+        $wDay = $this->sqlLocalDateForUtcColumn('wallet_transactions.created_at');
+        $eDay = $this->sqlLocalDateForUtcColumn('event_bets.created_at');
+        $uDay = $this->sqlLocalDateForUtcColumn('users.created_at');
 
         $depositsByDay = $this->groupSumWalletByDay(
             $customerIdsSub,
@@ -330,6 +408,14 @@ class AdminDashboardService
             $customerIdsSub,
             $start,
             $end,
+        );
+        $adminDebitByDay = $this->groupSumWalletByDay(
+            $customerIdsSub,
+            $start,
+            $end,
+            $wDay,
+            WalletSource::AdminDebit,
+            WalletDirection::Debit,
         );
         $commissionByDay = $this->groupSumWalletByDay(
             $customerIdsSub,
@@ -365,6 +451,7 @@ class AdminDashboardService
                 'label' => (string) $c->day.'/'.$c->month,
                 'deposit_vnd' => (int) ($depositsByDay[$k] ?? 0),
                 'withdrawal_vnd' => (int) ($withdrawalsByDay[$k] ?? 0),
+                'admin_debit_vnd' => (int) ($adminDebitByDay[$k] ?? 0),
                 'commission_vnd' => (int) ($commissionByDay[$k] ?? 0),
                 'new_users' => (int) ($newUsersByDay[$k] ?? 0),
                 'event_bets' => (int) ($betsByDay[$k] ?? 0),
@@ -405,7 +492,7 @@ class AdminDashboardService
         CarbonImmutable $start,
         CarbonImmutable $end,
     ): array {
-        $dExpr = $this->sqlDateColumn('withdrawal_requests.processed_at');
+        $dExpr = $this->sqlLocalDateForUtcColumn('withdrawal_requests.processed_at');
 
         return WithdrawalRequest::query()
             ->whereIn('user_id', $userIdsSub)

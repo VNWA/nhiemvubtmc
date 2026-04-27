@@ -15,6 +15,7 @@ type Quick = {
     total_balance_vnd: number;
     period_deposit_vnd: number;
     period_withdrawal_vnd: number;
+    period_admin_debit_vnd: number;
     period_commission_vnd: number;
 };
 
@@ -29,6 +30,7 @@ type ChartPoint = {
     label: string;
     deposit_vnd: number;
     withdrawal_vnd: number;
+    admin_debit_vnd: number;
     commission_vnd: number;
     new_users: number;
     event_bets: number;
@@ -133,7 +135,13 @@ const maxWalletAmount = computed(() => {
     let m = 1;
 
     for (const p of props.chart_series) {
-        m = Math.max(m, p.deposit_vnd, p.withdrawal_vnd, p.commission_vnd);
+        m = Math.max(
+            m,
+            p.deposit_vnd,
+            p.withdrawal_vnd,
+            p.admin_debit_vnd,
+            p.commission_vnd,
+        );
     }
 
     return m;
@@ -374,6 +382,16 @@ defineOptions({
                 <div
                     class="rounded-lg border border-sidebar-border/70 bg-stone-50/80 p-3 dark:border-sidebar-border dark:bg-stone-900/50"
                 >
+                    <p class="text-xs text-stone-500" title="Trừ tiền bởi quản trị / nhân viên (không gồm lệnh rút của khách)">
+                        Hệ thống trừ (kỳ)
+                    </p>
+                    <p class="mt-0.5 font-mono text-sm font-semibold text-orange-800 dark:text-orange-400/90">
+                        {{ formatVnd(quick.period_admin_debit_vnd) }}
+                    </p>
+                </div>
+                <div
+                    class="rounded-lg border border-sidebar-border/70 bg-stone-50/80 p-3 dark:border-sidebar-border dark:bg-stone-900/50"
+                >
                     <p class="text-xs text-stone-500">Hoa hồng (trong kỳ)</p>
                     <p class="mt-0.5 font-mono text-sm font-semibold text-amber-800 dark:text-amber-300/90">
                         {{ formatVnd(quick.period_commission_vnd) }}
@@ -425,7 +443,7 @@ defineOptions({
                 <h2
                     class="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100"
                 >
-                    Nạp / rút / hoa hồng theo ngày
+                    Nạp / rút / hệ thống trừ / hoa hồng theo ngày
                 </h2>
                 <div
                     class="flex flex-wrap items-center gap-3 text-[10px] text-stone-500"
@@ -438,7 +456,13 @@ defineOptions({
                     <span class="flex items-center gap-1.5"
                         ><span
                             class="inline-block size-2 rounded-sm bg-rose-500/90"
-                        />Rút</span
+                        />Rút (duyệt)</span
+                    >
+                    <span class="flex items-center gap-1.5"
+                        title="Trừ bởi quản trị / nhân viên"
+                        ><span
+                            class="inline-block size-2 rounded-sm bg-orange-500/90"
+                        />Hệ thống trừ</span
                     >
                     <span class="flex items-center gap-1.5"
                         ><span
@@ -478,6 +502,15 @@ defineOptions({
                                     :style="{
                                         height: barHeightPx(
                                             p.withdrawal_vnd,
+                                            maxWalletAmount,
+                                        ),
+                                    }"
+                                />
+                                <div
+                                    class="flex-1 max-w-1.5 min-h-px rounded-t bg-orange-500/90"
+                                    :style="{
+                                        height: barHeightPx(
+                                            p.admin_debit_vnd,
                                             maxWalletAmount,
                                         ),
                                     }"
