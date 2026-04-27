@@ -135,4 +135,42 @@ class WithdrawalStaffScopeTest extends TestCase
         $withdrawal->refresh();
         $this->assertSame(WithdrawalStatus::Approved, $withdrawal->status);
     }
+
+    public function test_index_search_filters_by_bank_keyword(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $u = User::factory()->create();
+        $u->assignRole('user');
+
+        $match = WithdrawalRequest::query()->create([
+            'user_id' => $u->getKey(),
+            'amount_vnd' => 200_000,
+            'bank_name' => 'Ngân hàng Techcombank',
+            'bank_account_number' => '998877',
+            'bank_account_name' => 'Nguyễn A',
+            'note' => null,
+            'status' => WithdrawalStatus::Pending,
+        ]);
+
+        WithdrawalRequest::query()->create([
+            'user_id' => $u->getKey(),
+            'amount_vnd' => 50_000,
+            'bank_name' => 'Vietinbank',
+            'bank_account_number' => '111',
+            'bank_account_name' => 'Trần B',
+            'note' => null,
+            'status' => WithdrawalStatus::Pending,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.withdrawals.index', ['q' => 'techcombank']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('items.data', 1)
+                ->where('items.data.0.id', $match->getKey())
+                ->where('filter.q', 'techcombank')
+            );
+    }
 }

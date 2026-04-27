@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,9 @@ class WithdrawalController extends Controller
         $allowedStatuses = array_map(fn (WithdrawalStatus $s) => $s->value, WithdrawalStatus::cases());
         $perPage = (int) $request->integer('per_page', 15);
         $perPage = max(5, min($perPage, 100));
+        $searchQ = trim((string) $request->query('q', ''));
+        $dateFrom = trim((string) $request->query('date_from', ''));
+        $dateTo = trim((string) $request->query('date_to', ''));
 
         $query = WithdrawalRequest::query()
             ->with(['user:id,name,username', 'processor:id,name,username'])
@@ -44,6 +48,67 @@ class WithdrawalController extends Controller
 
         if (in_array($status, $allowedStatuses, true)) {
             $query->where('status', $status);
+        }
+
+        if ($searchQ !== '') {
+            $like = '%'.str_replace(
+                ['\\', '%', '_'],
+                ['\\\\', '\%', '\_'],
+                mb_strtolower($searchQ, 'UTF-8')
+            ).'%';
+            $accountLike = '%'.str_replace(
+                ['\\', '%', '_'],
+                ['\\\\', '\%', '\_'],
+                $searchQ
+            ).'%';
+            $textFilter = function ($w) use ($like, $accountLike) {
+                $w->whereHas('user', function ($u) use ($like) {
+                    $u->where(function ($u2) use ($like) {
+                        $u2->whereRaw('LOWER(name) LIKE ?', [$like])
+                            ->orWhereRaw('LOWER(username) LIKE ?', [$like]);
+                    });
+                });
+                $w->orWhereRaw('LOWER(COALESCE(withdrawal_requests.bank_name, \'\')) LIKE ?', [$like]);
+                $w->orWhere('withdrawal_requests.bank_account_number', 'like', $accountLike);
+                $w->orWhereRaw('LOWER(COALESCE(withdrawal_requests.bank_account_name, \'\')) LIKE ?', [$like]);
+                $w->orWhereRaw('LOWER(COALESCE(withdrawal_requests.note, \'\')) LIKE ?', [$like]);
+                $w->orWhereRaw('LOWER(COALESCE(withdrawal_requests.admin_note, \'\')) LIKE ?', [$like]);
+            };
+            if (ctype_digit($searchQ) && (int) $searchQ > 0) {
+                $id = (int) $searchQ;
+                $query->where(function ($w) use ($id, $textFilter) {
+                    $w->where('withdrawal_requests.id', $id)
+                        ->orWhere($textFilter);
+                });
+            } else {
+                $query->where($textFilter);
+            }
+        }
+
+        if ($dateFrom !== '') {
+            try {
+                $query->where('withdrawal_requests.created_at', '>=', Carbon::parse($dateFrom)->startOfDay());
+            } catch (\Throwable) {
+            }
+        }
+
+        if ($dateTo !== '') {
+            try {
+                $query->where('withdrawal_requests.created_at', '<=', Carbon::parse($dateTo)->endOfDay());
+            } catch (\Throwable) {
+            }
+        }
+
+        if ($request->filled('amount_min')) {
+            $min = max(0, (int) $request->input('amount_min'));
+            $query->where('withdrawal_requests.amount_vnd', '>=', $min);
+        }
+
+        if ($request->filled('amount_max')) {
+            $max = min(1_000_000_000, (int) $request->input('amount_max'));
+            if ($max >= 0) {
+                $query->where('withdrawal_requests.amount_vnd', '<=', $max);
+            }
         }
 
         $items = $query
@@ -89,6 +154,11 @@ class WithdrawalController extends Controller
             'filter' => [
                 'status' => in_array($status, $allowedStatuses, true) ? $status : 'all',
                 'per_page' => $perPage,
+                'q' => $searchQ,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'amount_min' => $request->filled('amount_min') ? (string) (int) $request->input('amount_min') : '',
+                'amount_max' => $request->filled('amount_max') ? (string) (int) $request->input('amount_max') : '',
             ],
             'statusOptions' => array_map(
                 fn (WithdrawalStatus $s) => ['value' => $s->value, 'label' => $s->label()],

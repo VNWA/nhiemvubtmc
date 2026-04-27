@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { Ban, Check, ClipboardList, X } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { Ban, Check, ClipboardList, Search, X } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import WithdrawalController from '@/actions/App/Http/Controllers/Admin/WithdrawalController';
 import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
 import Heading from '@/components/Heading.vue';
 import Pagination from '@/components/Pagination.vue';
-import type {PaginationLink} from '@/components/Pagination.vue';
+import type { PaginationLink } from '@/components/Pagination.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -55,22 +56,156 @@ type StatusOption = { value: string; label: string };
 
 const props = defineProps<{
     items: Paginator;
-    filter: { status: string; per_page: number };
+    filter: {
+        status: string;
+        per_page: number;
+        q: string;
+        date_from: string;
+        date_to: string;
+        amount_min: string;
+        amount_max: string;
+    };
     statusOptions: StatusOption[];
     summary: Summary;
 }>();
 
+const onlyKeys = ['items', 'filter', 'summary', 'statusOptions'] as const;
+
 const statusFilter = ref(props.filter.status ?? 'all');
+const searchQ = ref(props.filter.q ?? '');
+const dateFrom = ref(props.filter.date_from ?? '');
+const dateTo = ref(props.filter.date_to ?? '');
+const amountMin = ref(props.filter.amount_min ?? '');
+const amountMax = ref(props.filter.amount_max ?? '');
+const perPage = ref(String(props.filter.per_page ?? 15));
+
 const activeRowId = ref<number | null>(null);
 const noteDraft = ref<string>('');
 
-watch(statusFilter, (next) => {
-    router.get(
-        WithdrawalController.index.url(),
-        next === 'all' ? {} : { status: next },
-        { preserveState: true, preserveScroll: true, replace: true },
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function buildQueryParams() {
+    const p: Record<string, string | number> = {
+        per_page: Number.parseInt(perPage.value, 10) || 15,
+    };
+
+    if (statusFilter.value !== 'all') {
+        p.status = statusFilter.value;
+    }
+
+    const q = searchQ.value.trim();
+
+    if (q !== '') {
+        p.q = q;
+    }
+
+    if (dateFrom.value) {
+        p.date_from = dateFrom.value;
+    }
+
+    if (dateTo.value) {
+        p.date_to = dateTo.value;
+    }
+
+    if (amountMin.value.trim() !== '') {
+        p.amount_min = amountMin.value.replace(/\D/g, '');
+    }
+
+    if (amountMax.value.trim() !== '') {
+        p.amount_max = amountMax.value.replace(/\D/g, '');
+    }
+
+    return p;
+}
+
+function pushFilters() {
+    router.get(WithdrawalController.index.url(), buildQueryParams(), {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: [...onlyKeys],
+    });
+}
+
+watch(
+    () => props.filter,
+    (f) => {
+        statusFilter.value = f.status ?? 'all';
+        searchQ.value = f.q ?? '';
+        dateFrom.value = f.date_from ?? '';
+        dateTo.value = f.date_to ?? '';
+        amountMin.value = f.amount_min ?? '';
+        amountMax.value = f.amount_max ?? '';
+        perPage.value = String(f.per_page ?? 15);
+    },
+    { deep: true },
+);
+
+watch(
+    () => [statusFilter.value, perPage.value] as const,
+    () => {
+        pushFilters();
+    },
+);
+
+watch(
+    () => searchQ.value,
+    () => {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+
+        debounceTimer = setTimeout(() => {
+            if (searchQ.value.trim() === (props.filter.q ?? '').trim()) {
+                return;
+            }
+
+            pushFilters();
+        }, 350);
+    },
+);
+
+const hasDetailFilters = computed(() => {
+    return !!(
+        searchQ.value.trim() ||
+        dateFrom.value ||
+        dateTo.value ||
+        amountMin.value.trim() ||
+        amountMax.value.trim()
     );
 });
+
+function applyDetailFilters() {
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+
+    pushFilters();
+}
+
+function clearSearchKeyword() {
+    searchQ.value = '';
+
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+
+    pushFilters();
+}
+
+function clearDetailFilters() {
+    searchQ.value = '';
+    dateFrom.value = '';
+    dateTo.value = '';
+    amountMin.value = '';
+    amountMax.value = '';
+
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+
+    pushFilters();
+}
 
 function toggleNote(id: number) {
     if (activeRowId.value === id) {
@@ -84,14 +219,15 @@ function toggleNote(id: number) {
 
 function approve(row: Item) {
     if (!confirm(`Duyệt rút ${formatVnd(row.amount_vnd)} cho ${row.user?.name ?? 'user'}?`)) {
-return;
-}
+        return;
+    }
 
     router.post(
         WithdrawalController.approve.url({ withdrawal: row.id }),
         { admin_note: activeRowId.value === row.id ? noteDraft.value : '' },
         {
             preserveScroll: true,
+            only: [...onlyKeys],
             onSuccess: () => {
                 activeRowId.value = null;
                 noteDraft.value = '';
@@ -121,6 +257,7 @@ function reject(row: Item) {
         { admin_note: note },
         {
             preserveScroll: true,
+            only: [...onlyKeys],
             onSuccess: () => {
                 activeRowId.value = null;
                 noteDraft.value = '';
@@ -165,9 +302,7 @@ defineOptions({
                 title="Yêu cầu rút tiền"
                 description="Duyệt hoặc từ chối yêu cầu rút tiền của người dùng. Khi duyệt, hệ thống tự trừ số dư tương ứng."
             />
-            <AdminListReloadButton
-                :only="['items', 'filter', 'summary', 'statusOptions']"
-            />
+            <AdminListReloadButton :only="[...onlyKeys]" />
         </div>
 
         <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -230,6 +365,147 @@ defineOptions({
         </section>
 
         <section
+            class="rounded-xl border border-border/60 bg-card p-4 shadow-sm dark:border-sidebar-border"
+        >
+            <h2
+                class="text-sm font-semibold text-foreground"
+            >
+                Tìm kiếm chi tiết
+            </h2>
+            <p
+                class="mt-0.5 text-xs text-muted-foreground"
+            >
+                Lọc theo mã yêu cầu, người dùng, ngân hàng, số tài khoản, nội dung ghi chú, khoảng thời gian tạo, hoặc khoảng số tiền (VNĐ).
+            </p>
+            <div
+                class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
+                <div class="grid gap-1.5 sm:col-span-2">
+                    <label
+                        class="text-[11px] font-medium text-muted-foreground"
+                        for="wd-q"
+                    >Từ khóa</label>
+                    <div class="relative w-full min-w-0">
+                        <Search
+                            class="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden="true"
+                        />
+                        <Input
+                            id="wd-q"
+                            v-model="searchQ"
+                            type="search"
+                            class="h-9 w-full pl-9 pr-9 text-sm"
+                            placeholder="ID yêu cầu, tên, @username, ngân hàng, STK, ghi chú…"
+                            enterkeyhint="search"
+                            autocomplete="off"
+                        />
+                        <button
+                            v-show="searchQ !== ''"
+                            type="button"
+                            class="absolute right-1.5 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            aria-label="Xóa từ khóa"
+                            @click="clearSearchKeyword"
+                        >
+                            <X class="size-3.5" />
+                        </button>
+                    </div>
+                </div>
+                <div class="grid gap-1.5">
+                    <label
+                        class="text-[11px] font-medium text-muted-foreground"
+                        for="wd-df"
+                    >Từ ngày (tạo yêu cầu)</label>
+                    <Input
+                        id="wd-df"
+                        v-model="dateFrom"
+                        type="date"
+                        :max="dateTo || undefined"
+                        class="h-9 w-full"
+                    />
+                </div>
+                <div class="grid gap-1.5">
+                    <label
+                        class="text-[11px] font-medium text-muted-foreground"
+                        for="wd-dt"
+                    >Đến ngày</label>
+                    <Input
+                        id="wd-dt"
+                        v-model="dateTo"
+                        type="date"
+                        :min="dateFrom || undefined"
+                        class="h-9 w-full"
+                    />
+                </div>
+                <div class="grid gap-1.5">
+                    <label
+                        class="text-[11px] font-medium text-muted-foreground"
+                        for="wd-min"
+                    >Số tiền từ (VNĐ)</label>
+                    <Input
+                        id="wd-min"
+                        v-model="amountMin"
+                        type="text"
+                        inputmode="numeric"
+                        class="h-9 w-full font-mono text-sm"
+                        placeholder="Ví dụ: 100000"
+                    />
+                </div>
+                <div class="grid gap-1.5">
+                    <label
+                        class="text-[11px] font-medium text-muted-foreground"
+                        for="wd-max"
+                    >Số tiền đến (VNĐ)</label>
+                    <Input
+                        id="wd-max"
+                        v-model="amountMax"
+                        type="text"
+                        inputmode="numeric"
+                        class="h-9 w-full font-mono text-sm"
+                        placeholder="Ví dụ: 5000000"
+                    />
+                </div>
+                <div class="grid gap-1.5">
+                    <span class="text-[11px] font-medium text-muted-foreground">Số bản ghi / trang</span>
+                    <Select v-model="perPage">
+                        <SelectTrigger class="h-9 w-full text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="n in [10, 15, 20, 30, 50, 100]"
+                                :key="n"
+                                :value="String(n)"
+                            >
+                                {{ n }} dòng
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <div
+                class="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3"
+            >
+                <Button
+                    type="button"
+                    size="sm"
+                    @click="applyDetailFilters"
+                >
+                    Lọc theo ngày & số tiền
+                </Button>
+                <Button
+                    v-if="hasDetailFilters"
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    @click="clearDetailFilters"
+                >
+                    <X class="size-3.5" />
+                    Xóa tìm chi tiết
+                </Button>
+            </div>
+        </section>
+
+        <section
             class="overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm dark:border-sidebar-border"
         >
             <div class="overflow-x-auto">
@@ -283,7 +559,9 @@ defineOptions({
                                     </div>
                                 </td>
                                 <td class="px-3 py-3 text-xs text-foreground/80">
-                                    <p v-if="row.note">{{ row.note }}</p>
+                                    <p v-if="row.note">
+                                        {{ row.note }}
+                                    </p>
                                     <p v-else class="text-muted-foreground/60">—</p>
                                     <p
                                         v-if="row.admin_note"
@@ -354,7 +632,10 @@ defineOptions({
                                 :key="`${row.id}-note`"
                                 class="border-b border-border/40 bg-muted/40 dark:border-sidebar-border/60"
                             >
-                                <td colspan="7" class="px-3 py-3">
+                                <td
+                                    colspan="7"
+                                    class="px-3 py-3"
+                                >
                                     <label
                                         class="block text-xs font-semibold text-muted-foreground"
                                     >
@@ -366,7 +647,7 @@ defineOptions({
                                         maxlength="500"
                                         class="mt-1 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-sidebar-border"
                                         placeholder="Tuỳ chọn khi duyệt, bắt buộc khi từ chối…"
-                                    ></textarea>
+                                    />
                                     <div class="mt-2 flex justify-end gap-2">
                                         <Button
                                             size="sm"
@@ -392,7 +673,7 @@ defineOptions({
 
             <Pagination
                 :meta="items"
-                :only="['items', 'filter', 'summary', 'statusOptions']"
+                :only="[...onlyKeys]"
                 item-label="yêu cầu"
             />
         </section>
