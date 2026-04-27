@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Coins, Gift, RotateCcw, Wallet } from 'lucide-vue-next';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
+import {
+    ArrowDownCircle,
+    ArrowLeft,
+    ArrowUpCircle,
+    Coins,
+    Gift,
+    Lock,
+    RotateCcw,
+    Snowflake,
+    Ticket,
+    Unlock,
+    Wallet,
+} from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import AdminListReloadButton from '@/components/admin/AdminListReloadButton.vue';
@@ -44,37 +56,93 @@ const props = defineProps<{
         username: string;
         email: string;
         balance_vnd: number;
+        frozen_vnd: number;
+        available_vnd: number;
         role: string;
     };
     transactions: Paginator;
+    filter: WalletFilter;
+    list_totals: {
+        adminCreditVnd: number;
+        refundVnd: number;
+        betPlaceVnd: number;
+        commissionVnd: number;
+        outDebitVnd: number;
+        freezeVnd: number;
+        adminCreditCount: number;
+        refundCount: number;
+        betPlaceCount: number;
+        commissionCount: number;
+        outDebitCount: number;
+        freezeCount: number;
+    };
     summary: {
-        credit_total: number;
-        credit_count: number;
-        debit_total: number;
-        debit_count: number;
-        commission_total: number;
-        commission_count: number;
+        net_vnd: number;
     };
 }>();
 
+type WalletFilter = 'all' | 'credit' | 'refund' | 'debit' | 'commission' | 'bet_place' | 'freeze';
+
 const quickAmounts = [100_000, 500_000, 1_000_000, 5_000_000, 10_000_000];
 
-type Operation = 'credit' | 'debit' | 'commission';
+type Operation = 'credit' | 'debit' | 'commission' | 'freeze' | 'unfreeze';
 
 const DEFAULT_NOTE: Record<Operation, string> = {
     credit: 'Nạp tiền thành công',
     debit: 'Rút tiền thành công',
     commission: 'Thưởng hoa hồng',
+    freeze: 'Lý do đóng băng: Sai thao tác',
+    unfreeze: 'Mở đóng băng',
 };
 
 const adjustAmount = ref<number>(0);
 const adjustOperation = ref<Operation>('credit');
 const adjustNote = ref<string>(DEFAULT_NOTE.credit);
 
-const netTotal = computed(() => props.summary.credit_total - props.summary.debit_total);
+const FILTERS: Array<{ value: WalletFilter; label: string; icon?: 'lock' }> = [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'credit', label: 'Nạp tiền' },
+    { value: 'refund', label: 'Hoàn trả' },
+    { value: 'debit', label: 'Rút & trừ' },
+    { value: 'bet_place', label: 'Lệ phí' },
+    { value: 'commission', label: 'Hoa hồng' },
+    { value: 'freeze', label: 'Đóng băng', icon: 'lock' },
+];
+
+const showFreezeUi = computed(() => props.user.frozen_vnd > 1);
+
+const filterChips = computed(() => {
+    if (showFreezeUi.value) {
+        return FILTERS;
+    }
+
+    return FILTERS.filter((f) => f.value !== 'freeze');
+});
+
+function setFilter(value: WalletFilter) {
+    if (value === props.filter) {
+        return;
+    }
+
+    const q: Record<string, string | number> = {
+        page: 1,
+        per_page: props.transactions.per_page,
+    };
+
+    if (value !== 'all') {
+        q.filter = value;
+    }
+
+    router.get(UserController.deposit.url({ user: props.user.id }, { query: q }), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['transactions', 'list_totals', 'summary', 'filter'],
+    });
+}
 
 function pickQuick(v: number) {
-    adjustAmount.value = v;
+    const cap = maxAmountThisOp.value;
+    adjustAmount.value = cap < Number.MAX_SAFE_INTEGER ? Math.min(v, cap) : v;
 }
 
 function resetAdjust() {
@@ -84,11 +152,47 @@ function resetAdjust() {
 }
 
 watch(adjustOperation, (next, prev) => {
-    const prevDefault = DEFAULT_NOTE[prev];
+    const prevDefault = DEFAULT_NOTE[prev as Operation];
 
     if (!adjustNote.value || adjustNote.value === prevDefault) {
         adjustNote.value = DEFAULT_NOTE[next];
     }
+});
+
+const maxAmountThisOp = computed(() => {
+    if (adjustOperation.value === 'freeze') {
+        return props.user.available_vnd;
+    }
+
+    if (adjustOperation.value === 'unfreeze') {
+        return props.user.frozen_vnd;
+    }
+
+    if (adjustOperation.value === 'debit') {
+        return props.user.balance_vnd;
+    }
+
+    return Number.MAX_SAFE_INTEGER;
+});
+
+const canSubmitAdjust = computed(() => {
+    if (adjustAmount.value <= 0) {
+        return false;
+    }
+
+    if (adjustOperation.value === 'freeze' && adjustAmount.value > props.user.available_vnd) {
+        return false;
+    }
+
+    if (adjustOperation.value === 'unfreeze' && adjustAmount.value > props.user.frozen_vnd) {
+        return false;
+    }
+
+    if (adjustOperation.value === 'debit' && adjustAmount.value > props.user.balance_vnd) {
+        return false;
+    }
+
+    return true;
 });
 
 const submitLabel = computed(() => {
@@ -100,7 +204,15 @@ const submitLabel = computed(() => {
         return 'Xác nhận trừ';
     }
 
-    return 'Xác nhận hoa hồng';
+    if (adjustOperation.value === 'commission') {
+        return 'Xác nhận hoa hồng';
+    }
+
+    if (adjustOperation.value === 'freeze') {
+        return 'Xác nhận đóng băng';
+    }
+
+    return 'Xác nhận mở đóng băng';
 });
 
 const submitClass = computed(() => {
@@ -112,7 +224,15 @@ const submitClass = computed(() => {
         return 'submit-debit';
     }
 
-    return 'submit-commission';
+    if (adjustOperation.value === 'commission') {
+        return 'submit-commission';
+    }
+
+    if (adjustOperation.value === 'freeze') {
+        return 'submit-freeze';
+    }
+
+    return 'submit-unfreeze';
 });
 
 function sourceChipClass(src: string): string {
@@ -140,6 +260,18 @@ function sourceChipClass(src: string): string {
         return 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300';
     }
 
+    if (src === 'admin_freeze') {
+        return 'border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200';
+    }
+
+    if (src === 'admin_unfreeze') {
+        return 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200';
+    }
+
+    if (src === 'event_refund') {
+        return 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300';
+    }
+
     return 'border-border/60 bg-muted/40 text-foreground/80';
 }
 
@@ -162,7 +294,7 @@ defineOptions({
             <Heading variant="small" title="Nạp / trừ số dư người dùng"
                 description="Điều chỉnh số dư và theo dõi toàn bộ lịch sử giao dịch của tài khoản." />
             <div class="flex flex-wrap items-center justify-end gap-2">
-                <AdminListReloadButton :only="['user', 'transactions', 'summary']" />
+                <AdminListReloadButton :only="['user', 'transactions', 'list_totals', 'summary', 'filter']" />
                 <Button variant="outline" as-child>
                     <Link :href="UserController.index.url()">
                         <ArrowLeft class="size-4" /> Quay lại danh sách
@@ -188,50 +320,142 @@ defineOptions({
 
                 <div class="user-balance">
                     <Wallet class="size-5" />
-                    <div class="text-right leading-none">
-                        <p class="balance-eyebrow">Số dư hiện tại</p>
+                    <div class="text-right leading-tight">
+                        <p class="balance-eyebrow">Tổng ví (VNĐ)</p>
                         <p class="mt-1 font-mono text-2xl font-extrabold">{{ formatVnd(user.balance_vnd) }}</p>
+                        <p
+                            v-if="user.frozen_vnd > 1"
+                            class="mt-1.5 text-[10px] font-medium leading-tight text-[#ffecb3]"
+                        >
+                            Đang đóng băng
+                            <span class="font-mono font-bold">{{ formatVnd(user.frozen_vnd) }}</span>
+                            <span class="mx-0.5">·</span>
+                            Khả dụng
+                            <span class="font-mono font-bold text-white">{{ formatVnd(user.available_vnd) }}</span>
+                        </p>
+                        <p
+                            v-else
+                            class="mt-1.5 text-[10px] font-medium leading-tight text-[#ffecb3]/90"
+                        >
+                            Toàn bộ số dư trên đều dùng được
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div class="stat-chip stat-credit">
-                    <ArrowUpCircle class="size-4" />
-                    <div class="min-w-0">
-                        <p class="stat-eyebrow">Tổng nạp</p>
-                        <p class="stat-amount">{{ formatVnd(summary.credit_total) }}</p>
-                        <p class="stat-sub">{{ summary.credit_count }} giao dịch</p>
-                    </div>
-                </div>
-                <div class="stat-chip stat-debit">
-                    <ArrowDownCircle class="size-4" />
-                    <div class="min-w-0">
-                        <p class="stat-eyebrow">Tổng rút</p>
-                        <p class="stat-amount">{{ formatVnd(summary.debit_total) }}</p>
-                        <p class="stat-sub">{{ summary.debit_count }} giao dịch</p>
-                    </div>
-                </div>
-                <div class="stat-chip stat-commission">
-                    <Gift class="size-4" />
-                    <div class="min-w-0">
-                        <p class="stat-eyebrow">Hoa hồng</p>
-                        <p class="stat-amount">{{ formatVnd(summary.commission_total) }}</p>
-                        <p class="stat-sub">{{ summary.commission_count }} lượt thưởng</p>
-                    </div>
-                </div>
-                <div class="stat-chip stat-net">
-                    <Coins class="size-4" />
-                    <div class="min-w-0">
-                        <p class="stat-eyebrow">Chênh lệch</p>
-                        <p
-                            class="stat-amount"
-                            :class="netTotal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'"
-                        >
-                            {{ netTotal >= 0 ? '+' : '' }}{{ formatVnd(netTotal) }}
-                        </p>
-                        <p class="stat-sub">Nạp − Chi</p>
-                    </div>
+            <p class="mt-3 text-[11px] text-muted-foreground">
+                Chọn thẻ hoặc nút bộ lọc để xem lịch sử theo từng loại (giống ví người chơi).
+            </p>
+
+            <div
+                class="mt-2 grid grid-cols-2 gap-1 min-[500px]:grid-cols-3 min-[800px]:grid-cols-4"
+                :class="showFreezeUi ? 'min-[1000px]:grid-cols-7' : 'min-[1000px]:grid-cols-6'"
+            >
+                <button
+                    v-for="f in filterChips"
+                    :key="f.value"
+                    type="button"
+                    class="filter-chip-adm"
+                    :class="{ 'filter-chip-adm--active': filter === f.value, 'filter-chip-adm--freeze': f.value === 'freeze' }"
+                    @click="setFilter(f.value)"
+                >
+                    <span class="filter-chip-adm-inner">
+                        <Lock v-if="f.icon === 'lock'" class="size-3 shrink-0" />
+                        <span>{{ f.label }}</span>
+                    </span>
+                </button>
+            </div>
+
+            <div
+                class="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3"
+                :class="showFreezeUi ? 'min-[900px]:grid-cols-7' : 'min-[900px]:grid-cols-6'"
+            >
+                <button
+                    type="button"
+                    class="summary-tile border-emerald-200 bg-emerald-50/70 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                    :class="{ 'summary-tile--on': filter === 'credit' }"
+                    @click="setFilter('credit')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <ArrowUpCircle class="size-3" /> Nạp tiền
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.adminCreditVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.adminCreditCount }} giao dịch</p>
+                </button>
+                <button
+                    type="button"
+                    class="summary-tile border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+                    :class="{ 'summary-tile--on': filter === 'refund' }"
+                    @click="setFilter('refund')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <RotateCcw class="size-3" /> Hoàn trả
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.refundVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.refundCount }} giao dịch</p>
+                </button>
+                <button
+                    type="button"
+                    class="summary-tile border-blue-200 bg-blue-50/70 text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+                    :class="{ 'summary-tile--on': filter === 'bet_place' }"
+                    @click="setFilter('bet_place')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <Ticket class="size-3" /> Lệ phí
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.betPlaceVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.betPlaceCount }} giao dịch</p>
+                </button>
+                <button
+                    type="button"
+                    class="summary-tile border-fuchsia-200 bg-fuchsia-50/70 text-fuchsia-800 dark:border-fuchsia-500/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-300"
+                    :class="{ 'summary-tile--on': filter === 'commission' }"
+                    @click="setFilter('commission')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <Gift class="size-3" /> Hoa hồng
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.commissionVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.commissionCount }} giao dịch</p>
+                </button>
+                <button
+                    type="button"
+                    class="summary-tile border-rose-200 bg-rose-50/70 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+                    :class="{ 'summary-tile--on': filter === 'debit' }"
+                    @click="setFilter('debit')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <ArrowDownCircle class="size-3" /> Rút &amp; trừ
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.outDebitVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.outDebitCount }} giao dịch</p>
+                </button>
+                <button
+                    v-if="showFreezeUi"
+                    type="button"
+                    class="summary-tile border-cyan-200 bg-cyan-50/80 text-cyan-900 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-200"
+                    :class="{ 'summary-tile--on': filter === 'freeze' }"
+                    @click="setFilter('freeze')"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <Snowflake class="size-3" /> Đóng băng
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(list_totals.freezeVnd) }}</p>
+                    <p class="text-[10px] opacity-90">{{ list_totals.freezeCount }} giao dịch</p>
+                </button>
+                <div
+                    class="summary-tile cursor-default border-border/60 bg-muted/30 text-foreground dark:bg-muted/20"
+                >
+                    <p class="flex items-center gap-1 font-semibold">
+                        <Coins class="size-3" /> Chênh lệch
+                    </p>
+                    <p
+                        class="font-mono text-sm font-bold"
+                        :class="summary.net_vnd >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'"
+                    >
+                        {{ summary.net_vnd >= 0 ? '+' : '' }}{{ formatVnd(summary.net_vnd) }}
+                    </p>
+                    <p class="text-[10px] text-muted-foreground">Tín dụng − ghi nợ (tổng)</p>
                 </div>
             </div>
         </section>
@@ -239,9 +463,10 @@ defineOptions({
         <div class="grid gap-4 lg:grid-cols-5">
             <section class="lg:col-span-2">
                 <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-                    <h3 class="text-base font-bold text-foreground">Nạp / trừ số dư</h3>
+                    <h3 class="text-base font-bold text-foreground">Nạp / trừ / hoa hồng / đóng băng</h3>
                     <p class="mt-0.5 text-xs text-muted-foreground">
-                        Chọn nhanh số tiền hoặc nhập tuỳ ý. Ghi chú sẽ được lưu vào lịch sử.
+                        <strong>Đóng băng</strong> tách phần tiền khỏi số dùng được; <strong>Mở đóng băng</strong> trả
+                        lại phần đã khóa. Tổng tiền trong ví không đổi, chỉ tách mức dùng được.
                     </p>
 
                     <Form v-bind="UserController.adjustBalance.form({ user: user.id })" class="mt-4 space-y-3"
@@ -269,6 +494,40 @@ defineOptions({
                                     <Gift class="size-4" /> Thưởng hoa hồng
                                 </label>
                             </div>
+                            <div class="mt-1.5 flex flex-wrap gap-2">
+                                <label class="op-chip"
+                                    :class="adjustOperation === 'freeze' ? 'op-chip--freeze-active' : ''">
+                                    <input type="radio" name="operation" value="freeze" class="hidden"
+                                        :checked="adjustOperation === 'freeze'"
+                                        @change="adjustOperation = 'freeze'" />
+                                    <Lock class="size-4" /> Đóng băng
+                                </label>
+                                <label class="op-chip"
+                                    :class="adjustOperation === 'unfreeze' ? 'op-chip--unfreeze-active' : ''">
+                                    <input type="radio" name="operation" value="unfreeze" class="hidden"
+                                        :checked="adjustOperation === 'unfreeze'"
+                                        @change="adjustOperation = 'unfreeze'" />
+                                    <Unlock class="size-4" /> Mở đóng băng
+                                </label>
+                            </div>
+                            <p v-if="adjustOperation === 'freeze'" class="pt-0.5 text-[11px] text-muted-foreground">
+                                Tối đa
+                                <span class="font-mono font-semibold text-foreground">{{
+                                    formatVnd(user.available_vnd) }}</span>
+                                (số dư khả dụng).
+                            </p>
+                            <p v-else-if="adjustOperation === 'unfreeze'" class="pt-0.5 text-[11px] text-muted-foreground">
+                                Tối đa
+                                <span class="font-mono font-semibold text-foreground">{{
+                                    formatVnd(user.frozen_vnd) }}</span>
+                                (đang đóng băng).
+                            </p>
+                            <p v-else-if="adjustOperation === 'debit'" class="pt-0.5 text-[11px] text-muted-foreground">
+                                Tối đa
+                                <span class="font-mono font-semibold text-foreground">{{
+                                    formatVnd(user.balance_vnd) }}</span>
+                                (tổng số dư; không thể trừ vượt quá).
+                            </p>
                             <InputError :message="errors.operation" />
                         </div>
 
@@ -308,7 +567,7 @@ defineOptions({
                             </Button>
                             <Button type="submit" class="flex-[1.4]"
                                 :class="submitClass"
-                                :disabled="processing || adjustAmount <= 0">
+                                :disabled="processing || !canSubmitAdjust">
                                 <Spinner v-if="processing" />
                                 {{ submitLabel }}
                             </Button>
@@ -324,7 +583,10 @@ defineOptions({
                     >
                         <div>
                             <h3 class="text-sm font-bold text-foreground">Lịch sử giao dịch</h3>
-                            <p class="text-xs text-muted-foreground">Theo dõi theo từng giao dịch (có phân trang)</p>
+                            <p class="text-xs text-muted-foreground">
+                                <span v-if="filter === 'all'">Theo dõi theo từng giao dịch (có phân trang).</span>
+                                <span v-else>Đang lọc theo loại đã chọn — trang 1 khi đổi bộ lọc.</span>
+                            </p>
                         </div>
                         <span class="font-mono text-xs text-muted-foreground">
                             Tổng: {{ transactions.total }} giao dịch
@@ -335,7 +597,8 @@ defineOptions({
                         v-if="transactions.data.length === 0"
                         class="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
-                        Chưa có giao dịch nào.
+                        <template v-if="filter === 'all'">Chưa có giao dịch nào.</template>
+                        <template v-else>Chưa có giao dịch nào ở bộ lọc này.</template>
                     </div>
 
                     <div v-else class="max-h-128 overflow-auto">
@@ -347,7 +610,7 @@ defineOptions({
                                     <th class="px-3 py-2 text-left">Loại</th>
                                     <th class="px-3 py-2 text-right">Số tiền</th>
                                     <th class="px-3 py-2 text-left">Nguồn</th>
-                                    <th class="px-3 py-2 text-right">Số dư sau</th>
+                                    <th class="px-3 py-2 text-right">Số dư tổng sau</th>
                                     <th class="px-3 py-2 text-left">Thời gian</th>
                                 </tr>
                             </thead>
@@ -403,7 +666,7 @@ defineOptions({
                     <Pagination
                         v-if="transactions.total > 0"
                         :meta="transactions"
-                        :only="['user', 'transactions', 'summary']"
+                        :only="['user', 'transactions', 'list_totals', 'summary', 'filter']"
                         item-label="giao dịch"
                     />
                 </div>
@@ -456,82 +719,90 @@ defineOptions({
     color: #ffd766;
 }
 
-.stat-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 0.75rem;
+.filter-chip-adm {
+    min-height: 2.5rem;
+    border: 1.5px solid var(--border);
     border-radius: 0.625rem;
-    border: 1px solid;
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.7rem;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition:
+        transform 100ms ease,
+        border-color 150ms ease,
+        background-color 150ms ease;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.2;
 }
 
-.stat-credit {
-    background: #ecfdf5;
-    border-color: #a7f3d0;
-    color: #065f46;
+.filter-chip-adm:hover {
+    border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+    background: color-mix(in srgb, var(--card) 85%, var(--primary));
 }
 
-.stat-debit {
-    background: #fff1f2;
-    border-color: #fecaca;
-    color: #9f1239;
+.filter-chip-adm--active {
+    border-color: #0d4f9e;
+    background: #eff4fc;
+    color: #0a3d7b;
+    box-shadow: 0 0 0 1px rgba(13, 79, 158, 0.2);
 }
 
-.stat-commission {
-    background: #fdf4ff;
-    border-color: #f0abfc;
-    color: #86198f;
+:global(.dark) .filter-chip-adm--active {
+    border-color: #3b82f6;
+    background: rgba(30, 58, 138, 0.35);
+    color: #dbeafe;
 }
 
-.stat-net {
-    background: #f3f7fc;
-    border-color: #dbe4ed;
-    color: #0d4f9e;
+.filter-chip-adm--freeze.filter-chip-adm--active {
+    border-color: #06b6d4;
+    background: #ecfeff;
 }
 
-:global(.dark) .stat-credit {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.35);
-    color: #6ee7b7;
+:global(.dark) .filter-chip-adm--freeze.filter-chip-adm--active {
+    background: rgba(6, 182, 212, 0.2);
+    color: #a5f3fc;
 }
 
-:global(.dark) .stat-debit {
-    background: rgba(244, 63, 94, 0.12);
-    border-color: rgba(244, 63, 94, 0.35);
-    color: #fda4af;
+.filter-chip-adm-inner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.35rem;
+    width: 100%;
+    min-height: 2.4rem;
 }
 
-:global(.dark) .stat-commission {
-    background: rgba(217, 70, 239, 0.12);
-    border-color: rgba(217, 70, 239, 0.35);
-    color: #f0abfc;
+.summary-tile {
+    text-align: left;
+    width: 100%;
+    min-height: 4.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.2rem;
+    border-radius: 0.5rem;
+    border-width: 1.5px;
+    padding: 0.5rem 0.6rem;
+    transition:
+        box-shadow 120ms ease,
+        border-color 120ms ease;
+    cursor: pointer;
 }
 
-:global(.dark) .stat-net {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: #93c5fd;
+.summary-tile:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-.stat-eyebrow {
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    opacity: 0.85;
+.summary-tile--on {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 45%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
 }
 
-.stat-amount {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    font-size: 0.9375rem;
-    font-weight: 800;
-    line-height: 1.15;
-}
-
-.stat-sub {
-    font-size: 0.625rem;
-    opacity: 0.75;
-    margin-top: 0.125rem;
+:global(.dark) .summary-tile--on {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45);
 }
 
 .op-chip {
@@ -591,6 +862,30 @@ defineOptions({
     color: #f0abfc;
 }
 
+.op-chip--freeze-active {
+    background: #ecfeff;
+    border-color: #06b6d4;
+    color: #155e75;
+}
+
+.op-chip--unfreeze-active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1e3a8a;
+}
+
+:global(.dark) .op-chip--freeze-active {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: #06b6d4;
+    color: #a5f3fc;
+}
+
+:global(.dark) .op-chip--unfreeze-active {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: #3b82f6;
+    color: #bfdbfe;
+}
+
 .quick-btn {
     display: inline-flex;
     align-items: center;
@@ -648,5 +943,23 @@ defineOptions({
 
 .submit-commission:hover:not(:disabled) {
     background: #a21caf !important;
+}
+
+.submit-freeze {
+    background: #0891b2 !important;
+    color: #ffffff !important;
+}
+
+.submit-freeze:hover:not(:disabled) {
+    background: #0e7490 !important;
+}
+
+.submit-unfreeze {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
+
+.submit-unfreeze:hover:not(:disabled) {
+    background: #1d4ed8 !important;
 }
 </style>

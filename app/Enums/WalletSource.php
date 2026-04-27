@@ -11,6 +11,8 @@ enum WalletSource: string
     case BetCancel = 'bet_cancel';
     case EventRefund = 'event_refund';
     case Withdrawal = 'withdrawal';
+    case AdminFreeze = 'admin_freeze';
+    case AdminUnfreeze = 'admin_unfreeze';
 
     public function label(): string
     {
@@ -22,6 +24,8 @@ enum WalletSource: string
             self::BetCancel => 'Huỷ cược (hoàn tiền)',
             self::EventRefund => 'Hoàn trả sự kiện',
             self::Withdrawal => 'Rút tiền đã duyệt',
+            self::AdminFreeze => 'Đóng băng số dư',
+            self::AdminUnfreeze => 'Mở đóng băng',
         };
     }
 }

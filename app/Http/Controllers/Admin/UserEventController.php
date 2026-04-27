@@ -45,6 +45,8 @@ class UserEventController extends Controller
                 'name' => $user->name,
                 'username' => $user->username,
                 'balance_vnd' => (int) $user->balance_vnd,
+                'frozen_vnd' => (int) ($user->frozen_vnd ?? 0),
+                'available_vnd' => $user->availableVnd(),
             ],
             'bets' => $bets,
             'statusOptions' => collect(EventBetStatus::cases())
@@ -186,6 +188,7 @@ class UserEventController extends Controller
         }
 
         $lockedUser->balance_vnd = $newBalance;
+        $this->wallet->capFrozenToBalance($lockedUser);
         $lockedUser->save();
     }
 

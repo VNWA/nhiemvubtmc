@@ -64,10 +64,8 @@ defineOptions({
             </div>
         </div>
 
-        <div
-            v-if="rooms.data.length === 0"
-            class="rounded-lg border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground"
-        >
+        <div v-if="rooms.data.length === 0"
+            class="rounded-lg border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
             Chưa có phòng nào. Bấm &quot;Tạo phòng&quot; để bắt đầu.
         </div>
 
@@ -114,11 +112,6 @@ defineOptions({
             </li>
         </ul>
 
-        <Pagination
-            v-if="rooms.total > 0"
-            :meta="rooms"
-            :only="['rooms']"
-            item-label="phòng"
-        />
+        <Pagination v-if="rooms.total > 0" :meta="rooms" :only="['rooms']" item-label="phòng" />
     </div>
 </template>

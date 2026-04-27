@@ -27,6 +27,7 @@ type HistoryItem = {
 
 const props = defineProps<{
     balanceVnd: number;
+    frozenVnd: number;
     pendingTotalVnd: number;
     availableVnd: number;
     bank: {
@@ -120,8 +121,9 @@ function statusChipClass(s: string): string {
                         {{ formatVnd(availableVnd) }}
                     </p>
                     <p class="balance-sub mt-1">
-                        Tổng số dư {{ formatVnd(balanceVnd) }} · Đang chờ duyệt
-                        {{ formatVnd(pendingTotalVnd) }}
+                        Tổng ví {{ formatVnd(balanceVnd) }}
+                        <span v-if="frozenVnd > 1"> · Đang đóng băng {{ formatVnd(frozenVnd) }}</span>
+                        <span> · Yêu cầu chờ duyệt {{ formatVnd(pendingTotalVnd) }}</span>
                     </p>
                 </div>
                 <div class="balance-icon">

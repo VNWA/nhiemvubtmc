@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\ActivityLogger;
 use App\Services\WalletService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -264,9 +265,16 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $perPage = max(5, min((int) $request->integer('per_page', 20), 100));
+        $filter = $this->normalizeWalletListFilter($request->query('filter'));
+
+        if ($filter === 'freeze' && (int) ($user->frozen_vnd ?? 0) <= 1) {
+            $filter = 'all';
+        }
 
         $transactions = WalletTransaction::query()
-            ->where('user_id', $user->getKey())
+            ->where('user_id', $user->getKey());
+        $this->applyWalletListFilter($transactions, $filter);
+        $transactions = $transactions
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString()
@@ -288,11 +296,8 @@ class UserController extends Controller
             ->get()
             ->keyBy('direction');
 
-        $commission = WalletTransaction::query()
-            ->where('user_id', $user->getKey())
-            ->where('source', WalletSource::Commission->value)
-            ->selectRaw('COALESCE(SUM(amount_vnd), 0) as sum_amount, COUNT(*) as total')
-            ->first();
+        $creditTotal = (int) ($totals[WalletDirection::Credit->value]->sum_amount ?? 0);
+        $debitTotal = (int) ($totals[WalletDirection::Debit->value]->sum_amount ?? 0);
 
         return Inertia::render('admin/users/Deposit', [
             'user' => [
@@ -301,16 +306,15 @@ class UserController extends Controller
                 'username' => $user->username,
                 'email' => $user->email,
                 'balance_vnd' => (int) $user->balance_vnd,
+                'frozen_vnd' => (int) ($user->frozen_vnd ?? 0),
+                'available_vnd' => $user->availableVnd(),
                 'role' => $user->roles->first()?->name ?? 'user',
             ],
             'transactions' => $transactions,
+            'filter' => $filter,
+            'list_totals' => $this->computeDepositListTotals($user),
             'summary' => [
-                'credit_total' => (int) ($totals[WalletDirection::Credit->value]->sum_amount ?? 0),
-                'credit_count' => (int) ($totals[WalletDirection::Credit->value]->total ?? 0),
-                'debit_total' => (int) ($totals[WalletDirection::Debit->value]->sum_amount ?? 0),
-                'debit_count' => (int) ($totals[WalletDirection::Debit->value]->total ?? 0),
-                'commission_total' => (int) ($commission->sum_amount ?? 0),
-                'commission_count' => (int) ($commission->total ?? 0),
+                'net_vnd' => $creditTotal - $debitTotal,
             ],
         ]);
     }
@@ -320,15 +324,47 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $data = $request->validated();
-        $operation = $data['operation'];
+        $operation = (string) $data['operation'];
         $amount = (int) $data['amount_vnd'];
         $note = $data['note'] ?? null;
+        $note = is_string($note) && $note !== '' ? $note : null;
         $adminId = (int) ($request->user()?->getKey() ?? 0);
+
+        if (in_array($operation, ['freeze', 'unfreeze'], true)) {
+            $defaultNote = $operation === 'freeze'
+                ? 'Lý do đóng băng: Sai thao tác'
+                : 'Mở đóng băng';
+            $verb = $operation === 'freeze' ? 'Đã đóng băng' : 'Đã mở đóng băng';
+            $logAction = $operation === 'freeze' ? 'wallet.freeze' : 'wallet.unfreeze';
+            $description = $note ?? $defaultNote;
+
+            DB::transaction(function () use ($user, $amount, $operation, $description, $adminId) {
+                /** @var User $locked */
+                $locked = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+                if ($operation === 'freeze') {
+                    $this->wallet->freeze($locked, $amount, $description, ['admin_id' => $adminId]);
+                } else {
+                    $this->wallet->unfreeze($locked, $amount, $description, ['admin_id' => $adminId]);
+                }
+            });
+
+            ActivityLogger::log(
+                $logAction,
+                (int) $user->getKey(),
+                sprintf('%s %s VNĐ', $verb, number_format($amount, 0, ',', '.')),
+                ['amount_vnd' => $amount, 'note' => $description],
+            );
+
+            $message = sprintf('%s %s VNĐ.', $verb, number_format($amount, 0, ',', '.'));
+
+            return back()->with('success', $message);
+        }
 
         [$direction, $source, $defaultNote, $verb, $logAction] = match ($operation) {
             'credit' => [WalletDirection::Credit, WalletSource::AdminCredit, 'Nạp tiền thành công', 'Đã nạp', 'wallet.credit'],
             'debit' => [WalletDirection::Debit, WalletSource::AdminDebit, 'Rút tiền thành công', 'Đã trừ', 'wallet.debit'],
             'commission' => [WalletDirection::Credit, WalletSource::Commission, 'Thưởng hoa hồng', 'Đã thưởng hoa hồng', 'wallet.commission'],
+            default => throw new \InvalidArgumentException('Invalid balance operation'),
         };
 
         DB::transaction(function () use ($user, $amount, $direction, $source, $note, $defaultNote, $adminId) {
@@ -340,16 +376,18 @@ class UserController extends Controller
                 $direction,
                 $source,
                 $amount,
-                $note ?: $defaultNote,
+                $note ?? $defaultNote,
                 ['admin_id' => $adminId],
             );
         });
+
+        $resolvedNote = $note ?? $defaultNote;
 
         ActivityLogger::log(
             $logAction,
             (int) $user->getKey(),
             sprintf('%s %s VNĐ', $verb, number_format($amount, 0, ',', '.')),
-            ['amount_vnd' => $amount, 'note' => $note ?: $defaultNote],
+            ['amount_vnd' => $amount, 'note' => $resolvedNote],
         );
 
         $message = sprintf('%s %s VNĐ.', $verb, number_format($amount, 0, ',', '.'));
@@ -502,6 +540,7 @@ class UserController extends Controller
 
         $canView = $viewer !== null && $viewer->can('viewPassword', $user);
         $canLock = $viewer !== null && $viewer->can('lock', $user);
+        $canDelete = $viewer !== null && $viewer->can('delete', $user);
 
         return [
             'id' => $user->id,
@@ -524,7 +563,116 @@ class UserController extends Controller
             ],
             'can_view_password' => $canView,
             'can_lock' => $canLock,
+            'can_delete' => $canDelete,
         ];
+    }
+
+    /**
+     * @return array{
+     *   adminCreditVnd: int,
+     *   refundVnd: int,
+     *   betPlaceVnd: int,
+     *   commissionVnd: int,
+     *   outDebitVnd: int,
+     *   freezeVnd: int,
+     *   adminCreditCount: int,
+     *   refundCount: int,
+     *   betPlaceCount: int,
+     *   commissionCount: int,
+     *   outDebitCount: int,
+     *   freezeCount: int
+     * }
+     */
+    private function computeDepositListTotals(User $user): array
+    {
+        $c = WalletSource::AdminCredit->value;
+        $bc = WalletSource::BetCancel->value;
+        $er = WalletSource::EventRefund->value;
+        $bp = WalletSource::BetPlace->value;
+        $cm = WalletSource::Commission->value;
+        $ad = WalletSource::AdminDebit->value;
+        $w = WalletSource::Withdrawal->value;
+        $fr = WalletSource::AdminFreeze->value;
+        $ur = WalletSource::AdminUnfreeze->value;
+        $d = WalletDirection::Debit->value;
+
+        $row = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->selectRaw('
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as admin_credit_vnd,
+                count(case when source = ? then 1 else null end) as admin_credit_count,
+                coalesce(sum(case when source in (?, ?) then amount_vnd else 0 end), 0) as refund_vnd,
+                count(case when source in (?, ?) then 1 else null end) as refund_count,
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as bet_place_vnd,
+                count(case when source = ? then 1 else null end) as bet_place_count,
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as commission_vnd,
+                count(case when source = ? then 1 else null end) as commission_count,
+                coalesce(sum(case when direction = ? and source in (?, ?) then amount_vnd else 0 end), 0) as out_debit_vnd,
+                count(case when direction = ? and source in (?, ?) then 1 else null end) as out_debit_count,
+                coalesce(sum(case when source = ? and direction = ? then amount_vnd else 0 end), 0) as freeze_vnd,
+                count(case when source in (?, ?) then 1 else null end) as freeze_count
+            ', [
+                $c, $c,
+                $bc, $er, $bc, $er,
+                $bp, $bp,
+                $cm, $cm,
+                $d, $ad, $w, $d, $ad, $w,
+                $fr, $d, $fr, $ur,
+            ])
+            ->first();
+
+        return [
+            'adminCreditVnd' => (int) ($row->admin_credit_vnd ?? 0),
+            'refundVnd' => (int) ($row->refund_vnd ?? 0),
+            'betPlaceVnd' => (int) ($row->bet_place_vnd ?? 0),
+            'commissionVnd' => (int) ($row->commission_vnd ?? 0),
+            'outDebitVnd' => (int) ($row->out_debit_vnd ?? 0),
+            'freezeVnd' => (int) ($row->freeze_vnd ?? 0),
+            'adminCreditCount' => (int) ($row->admin_credit_count ?? 0),
+            'refundCount' => (int) ($row->refund_count ?? 0),
+            'betPlaceCount' => (int) ($row->bet_place_count ?? 0),
+            'commissionCount' => (int) ($row->commission_count ?? 0),
+            'outDebitCount' => (int) ($row->out_debit_count ?? 0),
+            'freezeCount' => (int) ($row->freeze_count ?? 0),
+        ];
+    }
+
+    /**
+     * @param  Builder<WalletTransaction>  $query
+     */
+    private function applyWalletListFilter(Builder $query, string $filter): void
+    {
+        match ($filter) {
+            'credit' => $query
+                ->where('direction', WalletDirection::Credit->value)
+                ->where('source', WalletSource::AdminCredit->value),
+            'refund' => $query->whereIn('source', [
+                WalletSource::BetCancel->value,
+                WalletSource::EventRefund->value,
+            ]),
+            'debit' => $query
+                ->where('direction', WalletDirection::Debit->value)
+                ->where('source', '<>', WalletSource::BetPlace->value)
+                ->where('source', '<>', WalletSource::AdminFreeze->value),
+            'commission' => $query->where('source', WalletSource::Commission->value),
+            'bet_place' => $query->where('source', WalletSource::BetPlace->value),
+            'freeze' => $query->whereIn('source', [
+                WalletSource::AdminFreeze->value,
+                WalletSource::AdminUnfreeze->value,
+            ]),
+            default => null,
+        };
+    }
+
+    private function normalizeWalletListFilter(mixed $raw): string
+    {
+        $value = is_string($raw) ? $raw : 'all';
+
+        return in_array(
+            $value,
+            ['all', 'credit', 'refund', 'debit', 'commission', 'bet_place', 'freeze'],
+            true,
+        ) ? $value : 'all';
     }
 
     /**

@@ -76,4 +76,43 @@ class AccountWalletFilterTest extends TestCase
                 ->where('filter', 'refund')
             );
     }
+
+    public function test_wallet_freeze_filter_shows_only_freeze_and_unfreeze(): void
+    {
+        $user = User::factory()->create();
+
+        WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Debit,
+            'source' => WalletSource::AdminFreeze,
+            'amount_vnd' => 50_000,
+            'balance_after_vnd' => 500_000,
+            'description' => 'Lý do đóng băng: Sai thao tác',
+        ]);
+        WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Credit,
+            'source' => WalletSource::AdminUnfreeze,
+            'amount_vnd' => 10_000,
+            'balance_after_vnd' => 500_000,
+            'description' => 'Mở đóng băng',
+        ]);
+        WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Debit,
+            'source' => WalletSource::AdminDebit,
+            'amount_vnd' => 5_000,
+            'balance_after_vnd' => 495_000,
+            'description' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('account.wallet', ['filter' => 'freeze']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('account/Wallet')
+                ->has('transactions', 2)
+                ->where('filter', 'freeze')
+            );
+    }
 }

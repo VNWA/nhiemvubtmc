@@ -9,9 +9,18 @@ import { computed } from 'vue';
 import '../../css/client.css';
 const page = usePage();
 
-const balanceVnd = computed<number>(() => {
-    const auth = page.props.auth as { balanceVnd?: number } | undefined;
+const availableVnd = computed<number>(() => {
+    const auth = page.props.auth as { availableVnd?: number; balanceVnd?: number } | undefined;
+    if (auth?.availableVnd != null) {
+        return auth.availableVnd;
+    }
+
     return auth?.balanceVnd ?? 0;
+});
+
+const frozenVnd = computed<number>(() => {
+    const auth = page.props.auth as { frozenVnd?: number } | undefined;
+    return auth?.frozenVnd ?? 0;
 });
 
 const userName = computed<string>(() => {
@@ -61,9 +70,25 @@ const currentUrl = computed<string>(() => {
                             <span class="subtitle">Vàng · Bạc · Đá quý</span>
                         </span>
                     </Link>
-                    <Link :href="AccountController.show.url()" class="client-balance-pill" aria-label="Tài khoản">
+                    <Link
+                        :href="AccountController.show.url()"
+                        class="client-balance-pill"
+                        :title="
+                            frozenVnd > 1
+                                ? 'Khả dụng ' +
+                                  formatVnd(availableVnd) +
+                                  ' · Tổng ' +
+                                  formatVnd(
+                                      (page.props.auth as { balanceVnd?: number } | undefined)?.balanceVnd ?? 0,
+                                  ) +
+                                  ' · Đóng băng ' +
+                                  formatVnd(frozenVnd)
+                                : 'Số dư khả dụng'
+                        "
+                        aria-label="Tài khoản"
+                    >
                         <Wallet class="size-3.5" />
-                        <span class="amount">{{ formatVnd(balanceVnd) }}</span>
+                        <span class="amount">{{ formatVnd(availableVnd) }}</span>
                     </Link>
                 </div>
                 <p class="client-greeting">Xin chào, <strong>{{ userName }}</strong></p>

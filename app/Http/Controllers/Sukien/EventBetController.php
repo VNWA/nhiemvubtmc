@@ -81,9 +81,10 @@ class EventBetController extends Controller
             /** @var User $lockedUser */
             $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
 
-            if ((int) $lockedUser->balance_vnd < $totalAmount) {
+            $available = $lockedUser->availableVnd();
+            if ($totalAmount > $available) {
                 throw ValidationException::withMessages([
-                    'amount_vnd' => ['Số dư không đủ. Hiện còn '.number_format((int) $lockedUser->balance_vnd, 0, ',', '.').' VNĐ.'],
+                    'amount_vnd' => ['Số dư khả dụng không đủ. Hiện còn '.number_format($available, 0, ',', '.').' VNĐ.'],
                 ]);
             }
 
@@ -135,7 +136,7 @@ class EventBetController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
-                'balance_vnd' => (int) $user->fresh()->balance_vnd,
+                'balance_vnd' => (int) $user->fresh()->availableVnd(),
             ]);
         }
 
@@ -230,7 +231,7 @@ class EventBetController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'ok' => true,
-                'balance_vnd' => (int) $user->fresh()->balance_vnd,
+                'balance_vnd' => (int) $user->fresh()->availableVnd(),
             ]);
         }
 

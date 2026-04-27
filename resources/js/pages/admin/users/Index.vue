@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import {
     CalendarHeart,
     Coins,
@@ -54,6 +54,7 @@ type Row = {
     creator: CreatorRef;
     can_view_password: boolean;
     can_lock: boolean;
+    can_delete: boolean;
 };
 
 type Paginator = {
@@ -81,9 +82,6 @@ const props = defineProps<{
     statusOptions: { value: string; label: string }[];
     managerOptions: ManagerOption[];
 }>();
-
-const page = usePage();
-const currentUserId = computed(() => page.props.auth.user?.id as number | undefined);
 
 const search = ref<string>(props.filters.q ?? '');
 const ipFilter = ref<string>(props.filters.ip ?? '');
@@ -373,7 +371,7 @@ defineOptions({
                             <th class="p-3 font-semibold">Mật khẩu</th>
                             <th class="p-3 font-semibold">Liên hệ</th>
                             <th class="p-3 font-semibold">Trạng thái</th>
-                            <th class="p-3 font-semibold">Đăng nhập cuối</th>
+                            <th class="p-3 font-semibold">Truy cập cuối</th>
                             <th class="p-3 font-semibold">Tạo lúc</th>
                             <th class="p-3 font-semibold">NV quản lý</th>
                             <th class="p-3 text-end font-semibold">Số dư</th>
@@ -477,10 +475,14 @@ defineOptions({
                                         <Lock v-else class="size-3.5" />
                                         {{ u.status === 'locked' ? 'Mở khóa' : 'Khóa' }}
                                     </Button>
-                                    <Button v-if="u.id !== currentUserId" type="button"
-                                        variant="destructive" size="sm"
+                                    <Button
+                                        v-if="u.can_delete"
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
                                         :disabled="rowProcessing[u.id]"
-                                        @click="deleteUser(u)">
+                                        @click="deleteUser(u)"
+                                    >
                                         <Trash2 class="size-3.5" />
                                         Xóa
                                     </Button>

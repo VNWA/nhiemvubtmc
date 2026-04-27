@@ -34,6 +34,8 @@ type Paginator = {
 const props = defineProps<{
     bets: Paginator;
     balanceVnd: number;
+    frozenVnd: number;
+    availableVnd: number;
 }>();
 
 function goPage(url: string | null) {
@@ -96,7 +98,7 @@ function formatSigned(amount: number): string {
                     <span class="inline-flex items-center gap-1">
                         <span aria-hidden="true">🕒</span>
                         Phiên #{{ bet.round_number || '—' }}
-                        <span v-if="bet.round_name" class="text-stone-400">· {{ bet.round_name }}</span>
+                        <!-- <span v-if="bet.round_name" class="text-stone-400">· {{ bet.round_name }}</span> -->
                     </span>
                 </div>
 
@@ -118,7 +120,7 @@ function formatSigned(amount: number): string {
                             <span aria-hidden="true">🎁</span> Hoa hồng
                         </span>
                         <span class="font-mono font-semibold text-fuchsia-600">+{{ formatVnd(bet.commission_vnd)
-                            }}</span>
+                        }}</span>
                     </li>
                 </ul>
 
@@ -150,8 +152,12 @@ function formatSigned(amount: number): string {
         </div>
 
         <p class="text-center text-[11px] text-stone-400">
-            Số dư hiện tại: <span class="font-mono font-semibold text-stone-600">{{ formatVnd(props.balanceVnd)
-                }}</span>
+            Khả dụng: <span class="font-mono font-semibold text-stone-600">{{ formatVnd(props.availableVnd) }}</span>
+            <template v-if="props.frozenVnd > 1">
+                <span class="text-stone-300"> · </span>
+                Tổng {{ formatVnd(props.balanceVnd) }} · Đóng băng
+                {{ formatVnd(props.frozenVnd) }}
+            </template>
         </p>
     </div>
 </template>

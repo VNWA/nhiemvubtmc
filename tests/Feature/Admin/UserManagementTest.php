@@ -221,6 +221,22 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_staff_cannot_delete_customer_even_if_created_by_them(): void
+    {
+        $this->createRoles();
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $customer = User::factory()->create(['created_by' => $staff->id]);
+        $customer->assignRole('user');
+
+        $response = $this->actingAs($staff)
+            ->from(route('admin.users.index'))
+            ->delete(route('admin.users.destroy', $customer));
+
+        $response->assertForbidden();
+        $this->assertDatabaseHas('users', ['id' => $customer->id]);
+    }
+
     public function test_admin_deposit_page_returns_paginated_wallet_transactions(): void
     {
         $this->createRoles();
@@ -236,7 +252,23 @@ class UserManagementTest extends TestCase
                 ->has('transactions.data')
                 ->where('transactions.total', 0)
                 ->where('transactions.current_page', 1)
+                ->where('filter', 'all')
+                ->has('list_totals')
             );
+    }
+
+    public function test_admin_deposit_page_accepts_filter_query(): void
+    {
+        $this->createRoles();
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $customer = User::factory()->create();
+        $customer->assignRole('user');
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.deposit', ['user' => $customer, 'filter' => 'commission']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('filter', 'commission'));
     }
 
     public function test_admin_sukien_rooms_index_returns_paginated_rooms(): void

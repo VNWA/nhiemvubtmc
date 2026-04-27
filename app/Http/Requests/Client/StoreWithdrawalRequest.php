@@ -31,12 +31,12 @@ class StoreWithdrawalRequest extends FormRequest
                         return;
                     }
 
-                    $balance = (int) $user->balance_vnd;
+                    $availablePool = (int) $user->availableVnd();
                     $lockedPending = (int) WithdrawalRequest::query()
                         ->where('user_id', $user->getKey())
                         ->where('status', WithdrawalStatus::Pending->value)
                         ->sum('amount_vnd');
-                    $available = max(0, $balance - $lockedPending);
+                    $available = max(0, $availablePool - $lockedPending);
 
                     if ((int) $value > $available) {
                         $fail(sprintf(

@@ -298,8 +298,8 @@ function submitResetSession() {
     if (
         !window.confirm(
             'Reset đếm phiên?\n\n' +
-                'Lần mở phiên sau (không gõ tên) sẽ bắt đầu lại từ Phiên #1.\n' +
-                'Lịch sử phiên cũ vẫn giữ, chỉ tách kỳ đếm mới.',
+            'Lần mở phiên sau (không gõ tên) sẽ bắt đầu lại từ Phiên #1.\n' +
+            'Lịch sử phiên cũ vẫn giữ, chỉ tách kỳ đếm mới.',
         )
     ) {
         return;
@@ -355,8 +355,7 @@ function submitEnd() {
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <AdminListReloadButton
-                    :only="['eventRoom', 'options', 'openRound', 'betsStats', 'recentRounds', 'durationLimits']"
-                />
+                    :only="['eventRoom', 'options', 'openRound', 'betsStats', 'recentRounds', 'durationLimits']" />
                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs" :class="rtConnected
                     ? 'bg-emerald-100 text-emerald-800'
                     : 'bg-stone-200 text-stone-600'
@@ -469,7 +468,8 @@ function submitEnd() {
         <section v-else class="rounded-2xl border bg-card p-4">
             <h3 class="text-sm font-semibold text-stone-800">Bắt đầu phiên mới</h3>
             <p class="mt-1 text-xs text-muted-foreground">
-                Kỳ đếm hiện tại: <span class="font-mono font-semibold text-foreground">#{{ eventRoom.round_session }}</span>
+                Kỳ đếm hiện tại: <span class="font-mono font-semibold text-foreground">#{{ eventRoom.round_session
+                    }}</span>
                 — khi <strong>không nhập tên</strong>, tên mặc định sẽ là
                 <span class="whitespace-nowrap">Phiên #1, #2, …</span> trong kỳ này.
             </p>
@@ -480,10 +480,10 @@ function submitEnd() {
             </p>
 
             <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                <div>
+                <!-- <div>
                     <Label for="kname">Tên phiên (tuỳ chọn)</Label>
                     <Input id="kname" v-model="startForm.name" class="mt-1" placeholder="VD: Vòng 1 tối nay" />
-                </div>
+                </div> -->
 
                 <div>
                     <Label for="duration">
@@ -493,11 +493,9 @@ function submitEnd() {
                         :max="maxSeconds" class="mt-1" />
                     <div class="mt-2 flex flex-wrap gap-1.5">
                         <button v-for="s in QUICK_SECONDS" :key="s" type="button"
-                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs"
-                            :class="startForm.duration_seconds === s
+                            class="rounded-md border border-stone-200 px-2 py-0.5 text-xs" :class="startForm.duration_seconds === s
                                 ? 'bg-amber-500 text-white'
-                                : 'bg-stone-50 text-black'"
-                            @click="setDurationSeconds(s)">
+                                : 'bg-stone-50 text-black'" @click="setDurationSeconds(s)">
                             {{ s }}s
                         </button>
                     </div>

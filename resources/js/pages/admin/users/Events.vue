@@ -50,7 +50,14 @@ type Paginator = {
 };
 
 const props = defineProps<{
-    user: { id: number; name: string; username: string; balance_vnd: number };
+    user: {
+        id: number;
+        name: string;
+        username: string;
+        balance_vnd: number;
+        frozen_vnd: number;
+        available_vnd: number;
+    };
     bets: Paginator;
     statusOptions: StatusOption[];
 }>();
@@ -111,8 +118,15 @@ defineOptions({
 
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <Heading variant="small" :title="`Sự kiện của ${user.name}`"
-                :description="`@${user.username} · Số dư: ${formatVnd(user.balance_vnd)}`" />
+            <Heading
+                variant="small"
+                :title="`Sự kiện của ${user.name}`"
+                :description="
+                    user.frozen_vnd > 1
+                        ? `@${user.username} · Khả dụng: ${formatVnd(user.available_vnd)} · Tổng: ${formatVnd(user.balance_vnd)} · Đóng băng: ${formatVnd(user.frozen_vnd)}`
+                        : `@${user.username} · Số dư: ${formatVnd(user.balance_vnd)}`
+                "
+            />
             <div class="flex flex-wrap items-center justify-end gap-2">
                 <AdminListReloadButton :only="['bets', 'user', 'statusOptions']" />
                 <Button variant="secondary" as-child>

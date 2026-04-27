@@ -8,6 +8,7 @@ import {
     Gift,
     History,
     Landmark,
+    Lock,
     LogOut,
     ShieldCheck,
     User2,
@@ -39,6 +40,8 @@ const props = defineProps<{
         role: string;
     };
     balanceVnd: number;
+    frozenVnd: number;
+    availableVnd: number;
     bank: {
         bank_name: string | null;
         bank_account_number: string | null;
@@ -134,9 +137,28 @@ function doLogout() {
         <section class="balance-card">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p class="balance-label">Số dư hiện tại</p>
-                    <p class="mt-1 truncate  text-2xl font-bold leading-tight">{{ formatVnd(balanceVnd) }}
+                    <p class="balance-label">Số dư khả dụng</p>
+                    <p class="mt-1 truncate  text-2xl font-bold leading-tight">
+                        {{ formatVnd(availableVnd) }}
                     </p>
+                    <div
+                        v-if="frozenVnd > 1"
+                        class="frozen-balance-hint"
+                        role="status"
+                    >
+                        <span class="frozen-balance-hint__accent" aria-hidden="true" />
+                        <Lock
+                            class="frozen-balance-hint__lock size-4 shrink-0"
+                            stroke-width="2.25"
+                            aria-hidden="true"
+                        />
+                        <div class="min-w-0 flex-1">
+                            <p class="frozen-balance-hint__eyebrow">Số dư bị đóng băng</p>
+                            <p class="frozen-balance-hint__amount tabular-nums">
+                                {{ formatVnd(frozenVnd) }}
+                            </p>
+                        </div>
+                    </div>
                     <p class="balance-sub mt-1">{{ profile.name }} · @{{ profile.username }}</p>
                 </div>
                 <div class="balance-icon">
@@ -226,6 +248,54 @@ function doLogout() {
 .balance-sub {
     font-size: 0.6875rem;
     color: rgba(253, 248, 232, 0.8);
+}
+
+.frozen-balance-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.625rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.4rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(105deg, #fde68a 0%, #fef3c7 45%, #fff7ed 100%);
+    border: 1px solid rgba(217, 119, 6, 0.5);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.5) inset,
+        0 2px 8px -2px rgba(180, 83, 9, 0.35);
+}
+
+.frozen-balance-hint__accent {
+    width: 0.25rem;
+    align-self: stretch;
+    min-height: 2.5rem;
+    border-radius: 0.2rem;
+    background: #b91c1c;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.frozen-balance-hint__lock {
+    margin-top: 0.2rem;
+    color: #b91c1c;
+    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0.05));
+}
+
+.frozen-balance-hint__eyebrow {
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7c2d12;
+    line-height: 1.2;
+}
+
+.frozen-balance-hint__amount {
+    margin-top: 0.2rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 1.125rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #b91c1c;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .balance-icon {

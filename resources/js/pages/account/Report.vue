@@ -23,6 +23,8 @@ type SourceRow = {
 
 const props = defineProps<{
     balanceVnd: number;
+    frozenVnd: number;
+    availableVnd: number;
     totals: Summary;
     last30Days: Summary;
     bySource: SourceRow[];
@@ -59,9 +61,12 @@ function percent(part: number, whole: number): string {
 
         <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
-                <Wallet class="size-4" /> Số dư hiện tại
+                <Wallet class="size-4" /> Số dư khả dụng
             </div>
-            <p class="mt-1 font-mono text-2xl font-bold text-stone-800">{{ formatVnd(balanceVnd) }}</p>
+            <p class="mt-1 font-mono text-2xl font-bold text-stone-800">{{ formatVnd(availableVnd) }}</p>
+            <p v-if="frozenVnd > 1" class="mt-1 text-[11px] text-stone-500">
+                Tổng ví {{ formatVnd(balanceVnd) }} · Đóng băng {{ formatVnd(frozenVnd) }}
+            </p>
         </section>
 
         <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">

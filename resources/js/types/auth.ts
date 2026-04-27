@@ -17,6 +17,8 @@ export type Auth = {
     canManageUsers: boolean;
     role: 'admin' | 'staff' | 'user' | null;
     balanceVnd: number;
+    frozenVnd: number;
+    availableVnd: number;
 };
 
 export type TwoFactorConfigContent = {

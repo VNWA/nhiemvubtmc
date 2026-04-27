@@ -18,7 +18,7 @@ class WithdrawalController extends Controller
         $user = $request->user();
         abort_unless($user !== null, 403);
 
-        $pending = WithdrawalRequest::query()
+        $pending = (int) WithdrawalRequest::query()
             ->where('user_id', $user->getKey())
             ->where('status', WithdrawalStatus::Pending->value)
             ->sum('amount_vnd');
@@ -32,10 +32,13 @@ class WithdrawalController extends Controller
             ->values()
             ->all();
 
+        $availablePool = (int) $user->availableVnd();
+
         return Inertia::render('withdrawal/Create', [
             'balanceVnd' => (int) $user->balance_vnd,
+            'frozenVnd' => (int) ($user->frozen_vnd ?? 0),
             'pendingTotalVnd' => (int) $pending,
-            'availableVnd' => max(0, (int) $user->balance_vnd - (int) $pending),
+            'availableVnd' => max(0, $availablePool - $pending),
             'bank' => [
                 'bank_name' => $user->bank_name,
                 'bank_account_number' => $user->bank_account_number,

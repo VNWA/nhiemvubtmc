@@ -22,12 +22,29 @@ class AccountController extends Controller
     private const TRANSACTIONS_PER_PAGE = 15;
 
     /**
+     * @return array{balanceVnd: int, frozenVnd: int, availableVnd: int}
+     */
+    private function walletSnapshot(User $user): array
+    {
+        $balanceVnd = (int) $user->balance_vnd;
+        $frozenVnd = (int) ($user->frozen_vnd ?? 0);
+
+        return [
+            'balanceVnd' => $balanceVnd,
+            'frozenVnd' => $frozenVnd,
+            'availableVnd' => $user->availableVnd(),
+        ];
+    }
+
+    /**
      * Hub menu page — lightweight; individual sub-pages own their forms.
      */
     public function show(Request $request): Response
     {
         $user = $request->user();
         abort_if($user === null, 403);
+
+        $wallet = $this->walletSnapshot($user);
 
         $commissionSource = WalletSource::Commission->value;
         $totals = WalletTransaction::query()
@@ -46,7 +63,7 @@ class AccountController extends Controller
 
         return Inertia::render('account/Show', [
             'profile' => $this->profilePayload($user),
-            'balanceVnd' => (int) $user->balance_vnd,
+            ...$wallet,
             'bank' => $this->bankPayload($user),
             'totals' => [
                 'totalCreditVnd' => (int) ($totals?->total_credit ?? 0),
@@ -94,9 +111,11 @@ class AccountController extends Controller
                 ];
             });
 
+        $wallet = $this->walletSnapshot($user);
+
         return Inertia::render('account/Events', [
             'bets' => $bets,
-            'balanceVnd' => (int) $user->balance_vnd,
+            ...$wallet,
         ]);
     }
 
@@ -187,8 +206,10 @@ class AccountController extends Controller
             ")
             ->first();
 
+        $wallet = $this->walletSnapshot($user);
+
         return Inertia::render('account/Report', [
-            'balanceVnd' => (int) $user->balance_vnd,
+            ...$wallet,
             'totals' => [
                 'totalCreditVnd' => (int) ($totals?->total_credit ?? 0),
                 'totalDebitVnd' => (int) ($totals?->total_debit ?? 0),
@@ -221,19 +242,25 @@ class AccountController extends Controller
 
         $page = max(1, (int) $request->query('page', 1));
         $total = (clone $query)->count();
+        $lastPage = $total > 0 ? (int) max(1, (int) ceil($total / self::TRANSACTIONS_PER_PAGE)) : 1;
+        $page = min($page, $lastPage);
+
         $items = (clone $query)
             ->forPage($page, self::TRANSACTIONS_PER_PAGE)
             ->get()
             ->map(fn (WalletTransaction $tx) => $this->formatTransaction($tx));
 
+        $wallet = $this->walletSnapshot($user);
+
         return Inertia::render('account/Wallet', [
-            'balanceVnd' => (int) $user->balance_vnd,
+            ...$wallet,
+            'listTotals' => $this->computeWalletListTotals($user),
             'transactions' => $items,
             'pagination' => [
                 'page' => $page,
                 'perPage' => self::TRANSACTIONS_PER_PAGE,
                 'total' => $total,
-                'hasMore' => $page * self::TRANSACTIONS_PER_PAGE < $total,
+                'lastPage' => $lastPage,
             ],
             'filter' => $filter,
             'sourceLabels' => $this->sourceLabelMap(),
@@ -255,6 +282,9 @@ class AccountController extends Controller
 
         $page = max(1, (int) $request->query('page', 1));
         $total = (clone $query)->count();
+        $lastPage = $total > 0 ? (int) max(1, (int) ceil($total / self::TRANSACTIONS_PER_PAGE)) : 1;
+        $page = min($page, $lastPage);
+
         $items = (clone $query)
             ->forPage($page, self::TRANSACTIONS_PER_PAGE)
             ->get()
@@ -265,7 +295,7 @@ class AccountController extends Controller
             'page' => $page,
             'perPage' => self::TRANSACTIONS_PER_PAGE,
             'total' => $total,
-            'hasMore' => $page * self::TRANSACTIONS_PER_PAGE < $total,
+            'lastPage' => $lastPage,
             'filter' => $filter,
         ]);
     }
@@ -285,18 +315,73 @@ class AccountController extends Controller
             ]),
             'debit' => $query
                 ->where('direction', WalletDirection::Debit->value)
-                ->where('source', '<>', WalletSource::BetPlace->value),
+                ->where('source', '<>', WalletSource::BetPlace->value)
+                ->where('source', '<>', WalletSource::AdminFreeze->value),
             'commission' => $query->where('source', WalletSource::Commission->value),
             'bet_place' => $query->where('source', WalletSource::BetPlace->value),
+            'freeze' => $query->whereIn('source', [
+                WalletSource::AdminFreeze->value,
+                WalletSource::AdminUnfreeze->value,
+            ]),
             default => null,
         };
+    }
+
+    /**
+     * Tổng theo cả lịch sử (một lần truy vấn) — dùng cho thẻ tóm tắt, không phụ thuộc bộ lọc/trang.
+     *
+     * @return array{
+     *   adminCreditVnd: int,
+     *   refundVnd: int,
+     *   betPlaceVnd: int,
+     *   commissionVnd: int,
+     *   outDebitVnd: int,
+     *   freezeVnd: int
+     * }
+     */
+    private function computeWalletListTotals(User $user): array
+    {
+        $c = WalletSource::AdminCredit->value;
+        $bc = WalletSource::BetCancel->value;
+        $er = WalletSource::EventRefund->value;
+        $bp = WalletSource::BetPlace->value;
+        $cm = WalletSource::Commission->value;
+        $ad = WalletSource::AdminDebit->value;
+        $w = WalletSource::Withdrawal->value;
+        $fr = WalletSource::AdminFreeze->value;
+        $d = WalletDirection::Debit->value;
+
+        $row = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->selectRaw('
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as admin_credit,
+                coalesce(sum(case when source in (?, ?) then amount_vnd else 0 end), 0) as refund,
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as bet_place,
+                coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as commission,
+                coalesce(sum(case when direction = ? and source in (?, ?) then amount_vnd else 0 end), 0) as out_debit,
+                coalesce(sum(case when source = ? and direction = ? then amount_vnd else 0 end), 0) as freeze
+            ', [$c, $bc, $er, $bp, $cm, $d, $ad, $w, $fr, $d])
+            ->first();
+
+        return [
+            'adminCreditVnd' => (int) ($row->admin_credit ?? 0),
+            'refundVnd' => (int) ($row->refund ?? 0),
+            'betPlaceVnd' => (int) ($row->bet_place ?? 0),
+            'commissionVnd' => (int) ($row->commission ?? 0),
+            'outDebitVnd' => (int) ($row->out_debit ?? 0),
+            'freezeVnd' => (int) ($row->freeze ?? 0),
+        ];
     }
 
     private function normalizeFilter(mixed $raw): string
     {
         $value = is_string($raw) ? $raw : 'all';
 
-        return in_array($value, ['all', 'credit', 'refund', 'debit', 'commission', 'bet_place'], true) ? $value : 'all';
+        return in_array(
+            $value,
+            ['all', 'credit', 'refund', 'debit', 'commission', 'bet_place', 'freeze'],
+            true,
+        ) ? $value : 'all';
     }
 
     /**

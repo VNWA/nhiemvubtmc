@@ -141,7 +141,7 @@ class SukienEventRoomController extends Controller
             'userBet' => $userBet,
             'betsStats' => $betsStats,
             'isAdmin' => $isAdmin,
-            'userBalanceVnd' => $user === null ? 0 : (int) $user->balance_vnd,
+            'userBalanceVnd' => $user === null ? 0 : (int) $user->availableVnd(),
         ]);
     }
 

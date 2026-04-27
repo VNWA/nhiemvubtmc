@@ -26,6 +26,7 @@ use Throwable;
     'password_hint',
     'username',
     'balance_vnd',
+    'frozen_vnd',
     'bank_name',
     'bank_account_number',
     'bank_account_name',
@@ -89,6 +90,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Wallet balance the user can spend (bet, withdraw) — total balance minus admin-frozen amount.
+     */
+    public function availableVnd(): int
+    {
+        $total = (int) $this->balance_vnd;
+        $frozen = (int) ($this->frozen_vnd ?? 0);
+
+        return max(0, $total - $frozen);
+    }
+
+    /**
      * Store a new login password (hashed) and keep the encrypted hint in sync so admin/staff "xem mật khẩu" reflects self-service changes.
      */
     public function syncPasswordAndHintFromPlain(string $plain): void
@@ -138,6 +150,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'balance_vnd' => 'integer',
+            'frozen_vnd' => 'integer',
             'status' => UserStatus::class,
             'locked_at' => 'datetime',
             'last_login_at' => 'datetime',

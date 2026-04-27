@@ -50,25 +50,20 @@ class UserPolicy
         return false;
     }
 
+    /**
+     * Chỉ admin được xóa tài khoản người dùng; nhân viên (staff) không có quyền này.
+     */
     public function delete(User $user, User $model): bool
     {
         if ($user->id === $model->id) {
             return false;
         }
 
-        if ($user->hasRole('admin')) {
-            return ! $model->hasRole('admin') || $model->id !== $user->id;
+        if (! $user->hasRole('admin')) {
+            return false;
         }
 
-        if ($user->hasRole('staff')) {
-            if ($model->hasAnyRole(['admin', 'staff'])) {
-                return false;
-            }
-
-            return (int) $model->created_by === (int) $user->id;
-        }
-
-        return false;
+        return ! $model->hasRole('admin') || $model->id !== $user->id;
     }
 
     /**

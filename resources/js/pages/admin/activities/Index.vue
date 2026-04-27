@@ -55,7 +55,7 @@ const props = defineProps<{
     actionOptions: { value: string; label: string }[];
 }>();
 
-const actionFilter = ref<string>(props.filters.action ?? '');
+const actionFilter = ref<string>(props.filters.action !== '' ? props.filters.action : '__all');
 const search = ref<string>(props.filters.q ?? '');
 const dateFrom = ref<string>(props.filters.date_from ?? '');
 const dateTo = ref<string>(props.filters.date_to ?? '');
@@ -67,20 +67,20 @@ function pushFilters() {
     const cleaned = search.value.trim();
 
     if (cleaned !== '') {
-params.q = cleaned;
-}
+        params.q = cleaned;
+    }
 
     if (actionFilter.value && actionFilter.value !== '__all') {
-params.action = actionFilter.value;
-}
+        params.action = actionFilter.value;
+    }
 
     if (dateFrom.value) {
-params.date_from = dateFrom.value;
-}
+        params.date_from = dateFrom.value;
+    }
 
     if (dateTo.value) {
-params.date_to = dateTo.value;
-}
+        params.date_to = dateTo.value;
+    }
 
     router.get(ActivityLogController.index.url(), params, {
         preserveState: true,
@@ -92,21 +92,23 @@ params.date_to = dateTo.value;
 
 watch(search, () => {
     if (debounceTimer) {
-clearTimeout(debounceTimer);
-}
+        clearTimeout(debounceTimer);
+    }
 
     debounceTimer = setTimeout(pushFilters, 300);
 });
 
 watch([actionFilter, dateFrom, dateTo], () => pushFilters());
 
-const hasFilters = computed(
-    () => !!(search.value || actionFilter.value || dateFrom.value || dateTo.value),
-);
+const hasFilters = computed(() => {
+    const q = search.value.trim();
+    const hasAction = actionFilter.value !== '' && actionFilter.value !== '__all';
+    return !!(q || hasAction || dateFrom.value || dateTo.value);
+});
 
 function resetFilters() {
     search.value = '';
-    actionFilter.value = '';
+    actionFilter.value = '__all';
     dateFrom.value = '';
     dateTo.value = '';
 }
@@ -149,48 +151,96 @@ defineOptions({
             <AdminListReloadButton :only="['logs', 'filters', 'actionOptions']" />
         </div>
 
-        <div class="rounded-xl border border-border/60 bg-card p-3 shadow-sm dark:border-sidebar-border">
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <div class="relative">
-                    <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input v-model="search" type="search"
-                        placeholder="Tên user/nhân viên, mô tả…"
-                        class="h-10 pl-9 pr-9" autocomplete="off" />
-                    <button v-if="search !== ''" type="button"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Xóa tìm kiếm" @click="search = ''">
-                        <X class="size-4" />
-                    </button>
+        <div class="rounded-xl border border-border/60 bg-card p-4 shadow-sm dark:border-sidebar-border">
+            <div
+                class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end lg:grid-cols-4 lg:items-end"
+            >
+                <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="whitespace-nowrap text-[11px] font-medium leading-none text-muted-foreground"
+                        for="activity-search">
+                        Tìm kiếm
+                    </label>
+                    <div class="relative w-full min-w-0">
+                        <Search
+                            class="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden="true"
+                        />
+                        <Input
+                            id="activity-search"
+                            v-model="search"
+                            type="text"
+                            inputmode="search"
+                            enterkeyhint="search"
+                            placeholder="Tên, username, mô tả…"
+                            autocomplete="off"
+                            :class="[
+                                'h-10 w-full min-w-0 pl-9 pr-10',
+                                'placeholder:text-muted-foreground/80',
+                            ]"
+                        />
+                        <button
+                            v-show="search !== ''"
+                            type="button"
+                            class="absolute right-1.5 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            aria-label="Xóa tìm kiếm"
+                            @click="search = ''"
+                        >
+                            <X class="size-4" />
+                        </button>
+                    </div>
                 </div>
-                <Select v-model="actionFilter">
-                    <SelectTrigger class="h-10 w-full">
-                        <SelectValue placeholder="Loại thao tác" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all">Tất cả thao tác</SelectItem>
-                        <SelectItem v-for="opt in actionOptions" :key="opt.value" :value="opt.value">
-                            {{ opt.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] font-medium text-muted-foreground">Từ ngày</label>
-                    <Input v-model="dateFrom" type="date" :max="dateTo || undefined" class="h-10" />
+                <div class="flex min-w-0 flex-col gap-1.5">
+                    <span class="text-[11px] font-medium leading-none text-muted-foreground">Loại thao tác</span>
+                    <Select v-model="actionFilter">
+                        <SelectTrigger class="h-10! w-full min-w-0" aria-label="Bộ lọc loại thao tác">
+                            <SelectValue placeholder="Chọn loại" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all">Tất cả thao tác</SelectItem>
+                            <SelectItem v-for="opt in actionOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] font-medium text-muted-foreground">Đến ngày</label>
-                    <Input v-model="dateTo" type="date" :min="dateFrom || undefined" class="h-10" />
+                <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="text-[11px] font-medium leading-none text-muted-foreground" for="date-from">Từ
+                        ngày</label>
+                    <Input
+                        id="date-from"
+                        v-model="dateFrom"
+                        type="date"
+                        :max="dateTo || undefined"
+                        class="h-10 w-full min-w-0"
+                    />
+                </div>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                    <label class="text-[11px] font-medium leading-none text-muted-foreground" for="date-to">Đến
+                        ngày</label>
+                    <Input
+                        id="date-to"
+                        v-model="dateTo"
+                        type="date"
+                        :min="dateFrom || undefined"
+                        class="h-10 w-full min-w-0"
+                    />
                 </div>
             </div>
-            <div class="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>
+            <div
+                class="mt-4 flex flex-col gap-2 border-t border-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-sidebar-border/80"
+            >
+                <span class="text-xs text-muted-foreground">
                     Tổng
                     <span class="font-semibold text-foreground">{{ logs.total }}</span> bản ghi
                 </span>
-                <button v-if="hasFilters" type="button"
-                    class="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-2 py-1 font-medium text-foreground/80 transition hover:bg-muted dark:border-sidebar-border"
-                    @click="resetFilters">
-                    <X class="size-3.5" /> Xóa bộ lọc
+                <button
+                    v-if="hasFilters"
+                    type="button"
+                    class="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-md border border-border/60 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground/90 transition hover:bg-muted sm:self-auto dark:border-sidebar-border"
+                    @click="resetFilters"
+                >
+                    <X class="size-3.5" />
+                    Xóa bộ lọc
                 </button>
             </div>
         </div>

@@ -46,6 +46,10 @@ class HandleInertiaRequests extends Middleware
                 'canManageStaff' => $request->user()?->hasRole('admin') ?? false,
                 'role' => $request->user()?->roles->first()?->name,
                 'balanceVnd' => (int) ($request->user()?->balance_vnd ?? 0),
+                'frozenVnd' => (int) ($request->user()?->frozen_vnd ?? 0),
+                'availableVnd' => (int) ($request->user() === null
+                    ? 0
+                    : $request->user()->availableVnd()),
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

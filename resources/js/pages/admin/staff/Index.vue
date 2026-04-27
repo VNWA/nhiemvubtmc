@@ -263,7 +263,7 @@ defineOptions({
                             <th class="p-3">Liên hệ</th>
                             <th class="p-3 text-center">User quản lý</th>
                             <th class="p-3">Trạng thái</th>
-                            <th class="p-3">Đăng nhập cuối</th>
+                            <th class="p-3">Truy cập cuối</th>
                             <th class="p-3">Tạo lúc</th>
                             <th class="p-3 text-end">Thao tác</th>
                         </tr>

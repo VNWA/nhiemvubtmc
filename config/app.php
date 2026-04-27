@@ -125,4 +125,34 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Throttled "last user access" (Truy cập cuối) for authenticated web requests
+    |--------------------------------------------------------------------------
+    |
+    | Minimum seconds between writing last_login_at / last_login_ip for a user, to
+    | keep DB and session light. Throttling uses Cache, not the session, so "skip"
+    | requests do not grow session data. Lần đăng nhập bằng mật khẩu vẫn cập nhật
+    | tức thời + ActivityLogger::user.login như cũ.
+    |
+    | Route names in user_last_access_ignored_routes and path patterns are skipped
+    | (e.g. JSON/polling) — add more as needed to avoid hot endpoints.
+    |
+    */
+
+    'user_last_access_min_interval_seconds' => (int) env('USER_LAST_ACCESS_MIN_INTERVAL', 1800),
+
+    'user_last_access_ignored_routes' => [
+        'account.wallet.data',
+    ],
+
+    /**
+     * Path patterns for request()->is() — used alongside route names; avoids relying on
+     * the route name being present at middleware tail (e.g. some edge cases) and
+     * covers poll/data URLs explicitly.
+     */
+    'user_last_access_ignored_path_patterns' => [
+        'tai-khoan/vi/data',
+    ],
+
 ];
