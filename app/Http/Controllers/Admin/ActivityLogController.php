@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Support\ActivityLogActionLabels;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -77,21 +78,13 @@ class ActivityLogController extends Controller
                 ],
             ]);
 
-        $actionOptions = collect([
-            'user.created' => 'Tạo người dùng',
-            'user.updated' => 'Cập nhật người dùng',
-            'user.deleted' => 'Xóa người dùng',
-            'user.locked' => 'Khóa tài khoản',
-            'user.unlocked' => 'Mở khóa tài khoản',
-            'user.login' => 'Đăng nhập',
-            'wallet.credit' => 'Nạp tiền',
-            'wallet.debit' => 'Trừ tiền',
-            'wallet.commission' => 'Thưởng hoa hồng',
-            'bank.updated' => 'Cập nhật ngân hàng',
-        ])->map(fn (string $label, string $value) => [
-            'value' => $value,
-            'label' => $label,
-        ])->values();
+        $actionOptions = collect(ActivityLogActionLabels::all())
+            ->map(fn (string $label, string $action) => [
+                'value' => $action,
+                'label' => $label,
+            ])
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         return Inertia::render('admin/activities/Index', [
             'logs' => $logs,

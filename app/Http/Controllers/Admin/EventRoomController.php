@@ -110,7 +110,8 @@ class EventRoomController extends Controller
         $openRound = $eventRoom->openRound();
         if ($openRound !== null && $openRound->auto_end_at !== null && $openRound->auto_end_at->isPast()) {
             $rounds->autoEndRound($openRound);
-            $openRound = null;
+            $eventRoom->refresh();
+            $openRound = $eventRoom->openRound();
         }
 
         $perOption = [];
@@ -145,8 +146,10 @@ class EventRoomController extends Controller
             $perOption = array_values($agg);
         }
 
+        $session = (int) $eventRoom->round_session;
         $recentRounds = EventRound::query()
             ->where('event_room_id', $eventRoom->getKey())
+            ->where('round_session', $session)
             ->where('status', EventRoundStatus::Closed)
             ->orderByDesc('id')
             ->limit(20)

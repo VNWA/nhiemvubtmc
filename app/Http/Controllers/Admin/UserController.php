@@ -609,7 +609,6 @@ class UserController extends Controller
                 count(case when source = ? then 1 else null end) as commission_count,
                 coalesce(sum(case when direction = ? and source in (?, ?) then amount_vnd else 0 end), 0) as out_debit_vnd,
                 count(case when direction = ? and source in (?, ?) then 1 else null end) as out_debit_count,
-                coalesce(sum(case when source = ? and direction = ? then amount_vnd else 0 end), 0) as freeze_vnd,
                 count(case when source in (?, ?) then 1 else null end) as freeze_count
             ', [
                 $c, $c,
@@ -617,7 +616,7 @@ class UserController extends Controller
                 $bp, $bp,
                 $cm, $cm,
                 $d, $ad, $w, $d, $ad, $w,
-                $fr, $d, $fr, $ur,
+                $fr, $ur,
             ])
             ->first();
 
@@ -627,7 +626,7 @@ class UserController extends Controller
             'betPlaceVnd' => (int) ($row->bet_place_vnd ?? 0),
             'commissionVnd' => (int) ($row->commission_vnd ?? 0),
             'outDebitVnd' => (int) ($row->out_debit_vnd ?? 0),
-            'freezeVnd' => (int) ($row->freeze_vnd ?? 0),
+            'freezeVnd' => (int) ($user->frozen_vnd ?? 0),
             'adminCreditCount' => (int) ($row->admin_credit_count ?? 0),
             'refundCount' => (int) ($row->refund_count ?? 0),
             'betPlaceCount' => (int) ($row->bet_place_count ?? 0),

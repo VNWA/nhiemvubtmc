@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Client;
 
-use App\Enums\WithdrawalStatus;
-use App\Models\WithdrawalRequest;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -31,12 +29,7 @@ class StoreWithdrawalRequest extends FormRequest
                         return;
                     }
 
-                    $availablePool = (int) $user->availableVnd();
-                    $lockedPending = (int) WithdrawalRequest::query()
-                        ->where('user_id', $user->getKey())
-                        ->where('status', WithdrawalStatus::Pending->value)
-                        ->sum('amount_vnd');
-                    $available = max(0, $availablePool - $lockedPending);
+                    $available = (int) $user->availableVnd();
 
                     if ((int) $value > $available) {
                         $fail(sprintf(

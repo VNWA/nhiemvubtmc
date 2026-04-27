@@ -49,6 +49,8 @@ const props = defineProps<{
         slug: string;
         avatar_url: string | null;
         is_active: boolean;
+        /** Kỳ đếm phiên — lịch sử giao dịch chỉ thuộc kỳ này. */
+        round_session: number;
     };
     options: Opt[];
     openRound: OpenRoundT | null;
@@ -644,12 +646,18 @@ async function loadMoreRounds() {
         </section>
 
         <section class="rounded-xl border border-stone-200 bg-stone-50/80 p-3">
-            <div class="mb-1.5 flex items-center justify-between">
-                <h3 class="flex items-center gap-1 text-sm font-semibold text-stone-800">
-                    <History class="size-4" />
-                    Các phiên đã kết thúc
-                </h3>
-                <span class="text-[11px] text-stone-500">{{ displayedRounds.length }}/{{ recentRoundsTotal }}</span>
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+                <div>
+                    <h3 class="flex items-center gap-1 text-sm font-semibold text-stone-800">
+                        <History class="size-4" />
+                        Các phiên đã kết thúc
+                    </h3>
+                    <p class="mt-0.5 text-[11px] text-stone-500">
+                        Kỳ đếm #{{ eventRoom.round_session }} — chỉ liệt kê phiên thuộc kỳ này
+                    </p>
+                </div>
+                <span class="shrink-0 text-[11px] text-stone-500">{{ displayedRounds.length }}/{{
+                    recentRoundsTotal }}</span>
             </div>
             <ul v-if="displayedRounds.length" class="space-y-1 text-sm">
                 <li v-for="h in displayedRounds" :key="h.id"

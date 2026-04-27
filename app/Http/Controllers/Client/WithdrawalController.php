@@ -32,13 +32,11 @@ class WithdrawalController extends Controller
             ->values()
             ->all();
 
-        $availablePool = (int) $user->availableVnd();
-
         return Inertia::render('withdrawal/Create', [
             'balanceVnd' => (int) $user->balance_vnd,
             'frozenVnd' => (int) ($user->frozen_vnd ?? 0),
             'pendingTotalVnd' => (int) $pending,
-            'availableVnd' => max(0, $availablePool - $pending),
+            'availableVnd' => (int) $user->availableVnd(),
             'bank' => [
                 'bank_name' => $user->bank_name,
                 'bank_account_number' => $user->bank_account_number,

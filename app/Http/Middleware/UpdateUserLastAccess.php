@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Jobs\UpdateUserLastAccessJob;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -40,18 +41,17 @@ class UpdateUserLastAccess
             return $response;
         }
 
-        $at = now();
         $ip = $request->ip();
-
-        $user->forceFill([
-            'last_login_at' => $at,
-            'last_login_ip' => $ip,
-        ])->saveQuietly();
 
         Cache::put(
             $cacheKey,
-            $at->getTimestamp(),
+            now()->getTimestamp(),
             $interval,
+        );
+
+        UpdateUserLastAccessJob::dispatch(
+            userId: (int) $user->getKey(),
+            ip: is_string($ip) ? $ip : null,
         );
 
         return $response;

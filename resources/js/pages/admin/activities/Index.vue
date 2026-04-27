@@ -114,20 +114,28 @@ function resetFilters() {
 }
 
 function actionBadgeClass(action: string): string {
-    if (action.startsWith('user.locked') || action.startsWith('user.deleted')) {
-        return 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300';
+    if (action === 'user.deleted' || action === 'user.locked') {
+        return 'bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200';
     }
 
-    if (action.startsWith('user.unlocked')) {
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
+    if (action === 'user.unlocked') {
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200';
+    }
+
+    if (action === 'user.created') {
+        return 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200';
+    }
+
+    if (action === 'user.updated' || action === 'bank.updated') {
+        return 'bg-violet-100 text-violet-900 dark:bg-violet-500/15 dark:text-violet-200';
+    }
+
+    if (action === 'user.login' || action === 'user.password_changed' || action === 'user.2fa_cleared') {
+        return 'bg-indigo-100 text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-200';
     }
 
     if (action.startsWith('wallet.')) {
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300';
-    }
-
-    if (action.startsWith('user.created')) {
-        return 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300';
+        return 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200';
     }
 
     return 'bg-secondary text-secondary-foreground';
@@ -147,7 +155,7 @@ defineOptions({
     <div class="flex flex-col gap-5 p-4">
         <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <Heading variant="small" title="Lịch sử thao tác"
-                description="Toàn bộ thao tác do admin / nhân viên / hệ thống thực hiện." />
+                description="Ghi nhận thao tác của quản trị, nhân viên và người dùng (ví dụ đăng nhập). Cột «Hành động» hiển thị bằng tiếng Việt rõ ràng theo từng loại." />
             <AdminListReloadButton :only="['logs', 'filters', 'actionOptions']" />
         </div>
 

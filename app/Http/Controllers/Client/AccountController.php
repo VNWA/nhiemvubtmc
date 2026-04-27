@@ -47,11 +47,17 @@ class AccountController extends Controller
         $wallet = $this->walletSnapshot($user);
 
         $commissionSource = WalletSource::Commission->value;
+        $unfreezeSource = WalletSource::AdminUnfreeze->value;
+        $freezeSource = WalletSource::AdminFreeze->value;
         $totals = WalletTransaction::query()
             ->where('user_id', $user->getKey())
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
-                coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case
+                    when direction = 'credit' and source not in ('{$commissionSource}', '{$unfreezeSource}')
+                    then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case
+                    when direction = 'debit' and source <> '{$freezeSource}'
+                    then amount_vnd else 0 end), 0) as total_debit,
                 coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
                 count(*) as total_count
             ")
@@ -164,10 +170,16 @@ class AccountController extends Controller
         $base = WalletTransaction::query()->where('user_id', $user->getKey());
 
         $commissionSource = WalletSource::Commission->value;
+        $unfreezeSource = WalletSource::AdminUnfreeze->value;
+        $freezeSource = WalletSource::AdminFreeze->value;
         $totals = (clone $base)
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
-                coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case
+                    when direction = 'credit' and source not in ('{$commissionSource}', '{$unfreezeSource}')
+                    then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case
+                    when direction = 'debit' and source <> '{$freezeSource}'
+                    then amount_vnd else 0 end), 0) as total_debit,
                 coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
                 coalesce(sum(case when source = '{$commissionSource}' then 1 else 0 end), 0) as commission_count,
                 count(*) as total_count
@@ -199,8 +211,12 @@ class AccountController extends Controller
         $last30DaysBase = (clone $base)->where('created_at', '>=', now()->subDays(30));
         $last30 = (clone $last30DaysBase)
             ->selectRaw("
-                coalesce(sum(case when direction = 'credit' and source <> '{$commissionSource}' then amount_vnd else 0 end), 0) as total_credit,
-                coalesce(sum(case when direction = 'debit' then amount_vnd else 0 end), 0) as total_debit,
+                coalesce(sum(case
+                    when direction = 'credit' and source not in ('{$commissionSource}', '{$unfreezeSource}')
+                    then amount_vnd else 0 end), 0) as total_credit,
+                coalesce(sum(case
+                    when direction = 'debit' and source <> '{$freezeSource}'
+                    then amount_vnd else 0 end), 0) as total_debit,
                 coalesce(sum(case when source = '{$commissionSource}' then amount_vnd else 0 end), 0) as total_commission,
                 count(*) as total_count
             ")
@@ -348,7 +364,6 @@ class AccountController extends Controller
         $cm = WalletSource::Commission->value;
         $ad = WalletSource::AdminDebit->value;
         $w = WalletSource::Withdrawal->value;
-        $fr = WalletSource::AdminFreeze->value;
         $d = WalletDirection::Debit->value;
 
         $row = WalletTransaction::query()
@@ -358,9 +373,8 @@ class AccountController extends Controller
                 coalesce(sum(case when source in (?, ?) then amount_vnd else 0 end), 0) as refund,
                 coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as bet_place,
                 coalesce(sum(case when source = ? then amount_vnd else 0 end), 0) as commission,
-                coalesce(sum(case when direction = ? and source in (?, ?) then amount_vnd else 0 end), 0) as out_debit,
-                coalesce(sum(case when source = ? and direction = ? then amount_vnd else 0 end), 0) as freeze
-            ', [$c, $bc, $er, $bp, $cm, $d, $ad, $w, $fr, $d])
+                coalesce(sum(case when direction = ? and source in (?, ?) then amount_vnd else 0 end), 0) as out_debit
+            ', [$c, $bc, $er, $bp, $cm, $d, $ad, $w])
             ->first();
 
         return [
@@ -369,7 +383,7 @@ class AccountController extends Controller
             'betPlaceVnd' => (int) ($row->bet_place ?? 0),
             'commissionVnd' => (int) ($row->commission ?? 0),
             'outDebitVnd' => (int) ($row->out_debit ?? 0),
-            'freezeVnd' => (int) ($row->freeze ?? 0),
+            'freezeVnd' => (int) ($user->frozen_vnd ?? 0),
         ];
     }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FormDataConvertible } from '@inertiajs/core';
 import { Form, Head, Link, router } from '@inertiajs/vue3';
 import {
     ArrowDownCircle,
@@ -91,9 +92,29 @@ const DEFAULT_NOTE: Record<Operation, string> = {
     credit: 'Nạp tiền thành công',
     debit: 'Rút tiền thành công',
     commission: 'Thưởng hoa hồng',
-    freeze: 'Lý do đóng băng: Sai thao tác',
+    /** Chỉ phần mô tả; tiền tố "Lý do đóng băng: " thêm lúc gửi (xem `transformAdjustBalance`). */
+    freeze: 'Sai thao tác',
     unfreeze: 'Mở đóng băng',
 };
+
+const FREEZE_NOTE_PREFIX = 'Lý do đóng băng: ';
+
+/**
+ * Gửi lên server dạng đầy đủ, trong khi UI chỉ cho sửa phần sau dấu hai chấm.
+ */
+function transformAdjustBalance(
+    data: Record<string, FormDataConvertible>,
+): Record<string, FormDataConvertible> {
+    if (String(data.operation) !== 'freeze') {
+        return data;
+    }
+
+    const raw = typeof data.note === 'string' ? data.note.trim() : '';
+    const detail = raw || DEFAULT_NOTE.freeze;
+    const full = FREEZE_NOTE_PREFIX + detail;
+
+    return { ...data, note: full };
+}
 
 const adjustAmount = ref<number>(0);
 const adjustOperation = ref<Operation>('credit');
@@ -470,7 +491,7 @@ defineOptions({
                     </p>
 
                     <Form v-bind="UserController.adjustBalance.form({ user: user.id })" class="mt-4 space-y-3"
-                        v-slot="{ errors, processing }" @success="resetAdjust">
+                        :transform="transformAdjustBalance" v-slot="{ errors, processing }" @success="resetAdjust">
                         <div class="grid gap-1.5">
                             <Label>Loại điều chỉnh</Label>
                             <div class="flex flex-wrap gap-2">
@@ -545,15 +566,32 @@ defineOptions({
                         </div>
 
                         <div class="grid gap-1.5">
-                            <Label for="note">Ghi chú</Label>
+                            <Label for="note">{{
+                                adjustOperation === 'freeze' ? 'Nội dung mô tả' : 'Ghi chú'
+                            }}</Label>
                             <Input
+                                v-if="adjustOperation === 'freeze'"
+                                id="note"
+                                v-model="adjustNote"
+                                name="note"
+                                :maxlength="255 - FREEZE_NOTE_PREFIX.length"
+                                placeholder="Sai thao tác"
+                                autocomplete="off"
+                            />
+                            <Input
+                                v-else
                                 id="note"
                                 v-model="adjustNote"
                                 name="note"
                                 maxlength="255"
                                 :placeholder="DEFAULT_NOTE[adjustOperation]"
                             />
-                            <p class="text-[11px] text-muted-foreground">
+                            <p v-if="adjustOperation === 'freeze'" class="text-[11px] text-muted-foreground">
+                                Chỉ nhập phần mô tả; khi lưu hệ thống gắn thêm
+                                <span class="whitespace-nowrap font-semibold">«{{ FREEZE_NOTE_PREFIX }}»</span>
+                                ở phía trước (mặc định: <span class="font-semibold">{{ DEFAULT_NOTE.freeze }}</span>).
+                            </p>
+                            <p v-else class="text-[11px] text-muted-foreground">
                                 Ghi chú sẽ hiển thị ở tab lịch sử giao dịch của user. Mặc định:
                                 <span class="font-semibold">{{ DEFAULT_NOTE[adjustOperation] }}</span>.
                             </p>

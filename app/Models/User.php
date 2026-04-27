@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserStatus;
+use App\Enums\WithdrawalStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -90,14 +91,20 @@ class User extends Authenticatable
     }
 
     /**
-     * Wallet balance the user can spend (bet, withdraw) — total balance minus admin-frozen amount.
+     * Wallet balance the user can spend (bet, new withdrawal, etc.) — total balance minus
+     * admin-frozen amount and minus pending withdrawal requests not yet approved.
      */
     public function availableVnd(): int
     {
         $total = (int) $this->balance_vnd;
         $frozen = (int) ($this->frozen_vnd ?? 0);
+        $afterFreeze = max(0, $total - $frozen);
+        $pendingWithdrawal = (int) WithdrawalRequest::query()
+            ->where('user_id', $this->getKey())
+            ->where('status', WithdrawalStatus::Pending->value)
+            ->sum('amount_vnd');
 
-        return max(0, $total - $frozen);
+        return max(0, $afterFreeze - $pendingWithdrawal);
     }
 
     /**

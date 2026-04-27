@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\ActivityLog;
+use App\Jobs\RecordActivityLogJob;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Request;
 class ActivityLogger
 {
     /**
-     * Record an activity entry.
+     * Enqueue an activity entry (async with a non-sync queue driver).
      *
      * @param  array<string, mixed>|null  $meta
      */
@@ -20,20 +20,20 @@ class ActivityLogger
         ?string $description = null,
         ?array $meta = null,
         ?int $actorId = null,
-    ): ActivityLog {
+    ): void {
         if ($actorId === null) {
             /** @var User|null $actor */
             $actor = Auth::user();
             $actorId = $actor?->getKey();
         }
 
-        return ActivityLog::create([
-            'actor_id' => $actorId,
-            'target_user_id' => $targetUserId,
-            'action' => $action,
-            'description' => $description,
-            'meta' => $meta,
-            'ip' => Request::ip(),
-        ]);
+        RecordActivityLogJob::dispatch(
+            action: $action,
+            targetUserId: $targetUserId,
+            description: $description,
+            meta: $meta,
+            actorId: $actorId,
+            ip: Request::ip(),
+        );
     }
 }

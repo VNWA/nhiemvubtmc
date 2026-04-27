@@ -51,11 +51,13 @@ class SukienEventRoomController extends Controller
 
         $room->load(['options' => fn ($q) => $q->orderBy('sort_order')]);
         $openRound = $room->openRound();
-        if ($openRound) {
+        if ($openRound !== null) {
             // Defensive close if the timer expired while the queue worker was offline.
+            // Rollover may open the next round synchronously — must re-read open round.
             if ($openRound->auto_end_at !== null && $openRound->auto_end_at->isPast()) {
                 $this->rounds->autoEndRound($openRound);
-                $openRound = null;
+                $room->refresh();
+                $openRound = $room->openRound();
             }
         }
 
@@ -91,8 +93,10 @@ class SukienEventRoomController extends Controller
             }
         }
 
+        $session = (int) $room->round_session;
         $closedQuery = EventRound::query()
             ->where('event_room_id', $room->getKey())
+            ->where('round_session', $session)
             ->where('status', EventRoundStatus::Closed);
 
         $recentRoundsTotal = (clone $closedQuery)->count();
@@ -123,6 +127,7 @@ class SukienEventRoomController extends Controller
                 'slug' => $room->slug,
                 'avatar_url' => $room->avatar_url,
                 'is_active' => $room->is_active,
+                'round_session' => (int) $room->round_session,
             ],
             'options' => $options,
             'openRound' => $openRound === null ? null : [
@@ -148,12 +153,14 @@ class SukienEventRoomController extends Controller
     public function roundsHistory(Request $request, string $slug): JsonResponse
     {
         $room = EventRoom::query()->where('slug', $slug)->firstOrFail();
+        $session = (int) $room->round_session;
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = self::ROUNDS_PER_PAGE;
 
         $base = EventRound::query()
             ->where('event_room_id', $room->getKey())
+            ->where('round_session', $session)
             ->where('status', EventRoundStatus::Closed);
 
         $total = (clone $base)->count();

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ActivityLogActionLabels;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,19 +41,6 @@ class ActivityLog extends Model
 
     public function actionLabel(): string
     {
-        return match ($this->action) {
-            'user.created' => 'Tạo người dùng',
-            'user.updated' => 'Cập nhật người dùng',
-            'user.deleted' => 'Xóa người dùng',
-            'user.locked' => 'Khóa tài khoản',
-            'user.unlocked' => 'Mở khóa tài khoản',
-            'user.login' => 'Đăng nhập',
-            'user.password_changed' => 'Đổi mật khẩu',
-            'wallet.credit' => 'Nạp tiền',
-            'wallet.debit' => 'Trừ tiền',
-            'wallet.commission' => 'Thưởng hoa hồng',
-            'bank.updated' => 'Cập nhật ngân hàng',
-            default => $this->action,
-        };
+        return ActivityLogActionLabels::label((string) $this->action);
     }
 }

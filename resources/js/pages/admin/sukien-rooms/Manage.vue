@@ -528,7 +528,11 @@ function submitEnd() {
         </section>
 
         <section class="rounded-2xl border bg-card p-3">
-            <h3 class="mb-2 text-sm font-semibold text-stone-800">Các phiên đã kết thúc gần đây</h3>
+            <h3 class="text-sm font-semibold text-stone-800">Các phiên đã kết thúc gần đây</h3>
+            <p class="mb-2 text-[11px] text-muted-foreground">
+                Chỉ theo <span class="font-mono">kỳ #{{ eventRoom.round_session }}</span> (sau mỗi lần reset đếm,
+                lịch sử kỳ cũ không còn hiển thị ở đây dù vẫn lưu trong hệ thống).
+            </p>
             <ul v-if="recentRounds.length" class="max-h-72 space-y-1 overflow-y-auto pr-1 text-sm">
                 <li v-for="h in recentRounds" :key="h.id"
                     class="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-2 py-1.5">

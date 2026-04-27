@@ -73,7 +73,8 @@ const FILTERS: Array<{ value: Filter; label: string; icon?: 'lock' }> = [
     { value: 'freeze', label: 'Đóng băng', icon: 'lock' },
 ];
 
-const showFreezeUi = computed(() => props.frozenVnd > 1);
+/** Số đang đóng băng (users.frozen_vnd), dùng cho thẻ tóm tắt & dòng phụ dưới «Khả dụng». */
+const showFreezeUi = computed(() => props.frozenVnd > 0);
 
 const filterChips = computed(() => {
     if (showFreezeUi.value) {
@@ -89,7 +90,7 @@ function syncFromProps() {
     lastPage.value = props.pagination.lastPage;
     total.value = props.pagination.total;
 
-    if (props.frozenVnd <= 1 && props.filter === 'freeze') {
+    if (props.frozenVnd <= 0 && props.filter === 'freeze') {
         filter.value = 'all';
         void nextTick(() => {
             void loadPage(1);
@@ -122,7 +123,7 @@ async function loadPage(targetPage: number) {
     if (lastPage.value > 0 && targetPage > lastPage.value) {
         return;
     }
-    if (filter.value === 'freeze' && props.frozenVnd <= 1) {
+    if (filter.value === 'freeze' && props.frozenVnd <= 0) {
         filter.value = 'all';
     }
 
@@ -262,7 +263,9 @@ function txAmountClass(tx: Tx): string {
             <div class="text-right">
                 <p class="text-[11px] uppercase tracking-wide text-stone-500">Khả dụng</p>
                 <p class="font-mono text-sm font-bold text-stone-800">{{ formatVnd(availableVnd) }}</p>
-                <p v-if="showFreezeUi" class="text-[10px] text-stone-500">Đóng băng {{ formatVnd(frozenVnd) }}</p>
+                <p v-if="showFreezeUi" class="text-[10px] text-stone-500">
+                    Đang đóng băng {{ formatVnd(frozenVnd) }}
+                </p>
             </div>
         </div>
 
@@ -273,6 +276,11 @@ function txAmountClass(tx: Tx): string {
             </div>
             <p class="mt-0.5 text-[11px] text-stone-500">
                 Mỗi lần chỉ tải {{ props.pagination.perPage }} giao dịch; chuyển trang để xem thêm, tránh tải hết một lúc.
+                <template v-if="showFreezeUi">
+                    <span class="mt-1 block text-[10px] text-stone-500">
+                        Ô «Đang đóng băng» là số tiền đang bị khóa <strong>hiện tại</strong> (trùng dòng dưới Khả dụng), không phải tổng cộng dồn từng dòng lịch sử.
+                    </span>
+                </template>
             </p>
 
             <div
@@ -328,9 +336,10 @@ function txAmountClass(tx: Tx): string {
                     class="rounded-lg border border-cyan-200 bg-cyan-50/80 px-2 py-1.5 text-cyan-900"
                 >
                     <p class="flex items-center gap-1">
-                        <Lock class="size-3" /> Đóng băng
+                        <Lock class="size-3" /> Đang đóng băng
                     </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(listTotals.freezeVnd) }}</p>
+                    <p class="mt-0.5 text-[10px] leading-tight text-cyan-950/80">Số khóa hiện tại</p>
                 </div>
             </div>
         </section>
