@@ -274,22 +274,13 @@ function txAmountClass(tx: Tx): string {
                 <Wallet class="size-5 text-amber-700" />
                 <h1 class="text-base font-bold text-stone-800">Lịch sử giao dịch</h1>
             </div>
-            <p class="mt-0.5 text-[11px] text-stone-500">
-                Mỗi lần chỉ tải {{ props.pagination.perPage }} giao dịch; chuyển trang để xem thêm, tránh tải hết một lúc.
-                <template v-if="showFreezeUi">
-                    <span class="mt-1 block text-[10px] text-stone-500">
-                        Ô «Đang đóng băng» là số tiền đang bị khóa <strong>hiện tại</strong> (trùng dòng dưới Khả dụng), không phải tổng cộng dồn từng dòng lịch sử.
-                    </span>
-                </template>
-            </p>
 
-            <div
-                class="mt-2 grid grid-cols-2 gap-1 min-[500px]:grid-cols-3 min-[800px]:grid-cols-4"
-                :class="showFreezeUi ? 'min-[1000px]:grid-cols-7' : 'min-[1000px]:grid-cols-6'"
-            >
+
+            <div class="mt-2 grid grid-cols-2 gap-1 min-[500px]:grid-cols-3 min-[800px]:grid-cols-4"
+                :class="showFreezeUi ? 'min-[1000px]:grid-cols-7' : 'min-[1000px]:grid-cols-6'">
                 <button v-for="f in filterChips" :key="f.value" type="button" class="filter-chip"
-                    :class="{ 'is-active': filter === f.value, 'is-freeze': f.value === 'freeze' }"
-                    :disabled="loading" @click="setFilter(f.value)">
+                    :class="{ 'is-active': filter === f.value, 'is-freeze': f.value === 'freeze' }" :disabled="loading"
+                    @click="setFilter(f.value)">
                     <span class="filter-chip-inner">
                         <Lock v-if="f.icon === 'lock'" class="size-3 shrink-0" />
                         <span>{{ f.label }}</span>
@@ -297,10 +288,8 @@ function txAmountClass(tx: Tx): string {
                 </button>
             </div>
 
-            <div
-                class="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3"
-                :class="showFreezeUi ? 'min-[800px]:grid-cols-6' : 'min-[800px]:grid-cols-5'"
-            >
+            <div class="mt-2 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-3"
+                :class="showFreezeUi ? 'min-[800px]:grid-cols-6' : 'min-[800px]:grid-cols-5'">
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-2 py-1.5 text-emerald-800">
                     <p class="flex items-center gap-1">
                         <ArrowUpCircle class="size-3" /> Nạp
@@ -312,6 +301,12 @@ function txAmountClass(tx: Tx): string {
                         <RotateCcw class="size-3" /> Hoàn trả
                     </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(listTotals.refundVnd) }}</p>
+                </div>
+                <div class="rounded-lg border border-rose-200 bg-rose-50/70 px-2 py-1.5 text-rose-800">
+                    <p class="flex items-center gap-1">
+                        <ArrowDownCircle class="size-3" /> Rút &amp; trừ
+                    </p>
+                    <p class="font-mono text-sm font-bold">{{ formatVnd(listTotals.outDebitVnd) }}</p>
                 </div>
                 <div class="rounded-lg border border-blue-200 bg-blue-50/70 px-2 py-1.5 text-blue-800">
                     <p class="flex items-center gap-1">
@@ -325,16 +320,9 @@ function txAmountClass(tx: Tx): string {
                     </p>
                     <p class="font-mono text-sm font-bold">{{ formatVnd(listTotals.commissionVnd) }}</p>
                 </div>
-                <div class="rounded-lg border border-rose-200 bg-rose-50/70 px-2 py-1.5 text-rose-800">
-                    <p class="flex items-center gap-1">
-                        <ArrowDownCircle class="size-3" /> Rút &amp; trừ
-                    </p>
-                    <p class="font-mono text-sm font-bold">{{ formatVnd(listTotals.outDebitVnd) }}</p>
-                </div>
-                <div
-                    v-if="showFreezeUi"
-                    class="rounded-lg border border-cyan-200 bg-cyan-50/80 px-2 py-1.5 text-cyan-900"
-                >
+
+                <div v-if="showFreezeUi"
+                    class="rounded-lg border border-cyan-200 bg-cyan-50/80 px-2 py-1.5 text-cyan-900">
                     <p class="flex items-center gap-1">
                         <Lock class="size-3" /> Đang đóng băng
                     </p>
@@ -347,9 +335,7 @@ function txAmountClass(tx: Tx): string {
         <section class="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
             <p class="text-[11px] text-stone-500">
                 Đang xem: <span class="font-mono font-semibold text-stone-700">{{
-                    items.length }}</span> / <span
-                    class="font-mono"
-                >{{ total }}</span> bản ghi
+                    items.length }}</span> / <span class="font-mono">{{ total }}</span> bản ghi
                 (trang {{ page }}/{{ lastPage }})
             </p>
 
@@ -370,7 +356,9 @@ function txAmountClass(tx: Tx): string {
                             {{ txTitle(tx) }}
                         </p>
                         <div class="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-stone-500">
-                            <span class="inline-flex max-w-full items-center gap-0.5 rounded border px-1.5 py-px text-[10px] font-semibold" :class="sourcePillClass(tx)">
+                            <span
+                                class="inline-flex max-w-full items-center gap-0.5 rounded border px-1.5 py-px text-[10px] font-semibold"
+                                :class="sourcePillClass(tx)">
                                 <Snowflake v-if="tx.source === 'admin_freeze'" class="size-2.5 shrink-0" />
                                 <span class="min-w-0">{{ tx.source_label }}</span>
                             </span>
@@ -381,7 +369,8 @@ function txAmountClass(tx: Tx): string {
                         <p class="font-mono text-sm font-bold" :class="txAmountClass(tx)">
                             {{ tx.direction === 'credit' ? '+' : '−' }}{{ formatVnd(tx.amount_vnd) }}
                         </p>
-                        <p class="font-mono text-[10px] text-stone-500">Tổng SD: {{ formatVnd(tx.balance_after_vnd) }}</p>
+                        <p class="font-mono text-[10px] text-stone-500">Tổng SD: {{ formatVnd(tx.balance_after_vnd) }}
+                        </p>
                     </div>
                 </li>
             </ul>
@@ -394,19 +383,20 @@ function txAmountClass(tx: Tx): string {
 
             <div v-if="showPagination" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p v-if="loadError" class="text-xs text-rose-600 sm:order-2">{{ loadError }}</p>
-                <div class="inline-flex w-full max-w-sm items-stretch overflow-hidden rounded-xl border border-stone-200 bg-stone-50/80 shadow-sm sm:order-1 sm:w-auto">
+                <div
+                    class="inline-flex w-full max-w-sm items-stretch overflow-hidden rounded-xl border border-stone-200 bg-stone-50/80 shadow-sm sm:order-1 sm:w-auto">
                     <button type="button" class="page-pill-btn flex-1" :class="{ 'is-disabled': page <= 1 || loading }"
                         :disabled="page <= 1 || loading" aria-label="Trang trước" @click="loadPage(page - 1)">
                         <ChevronLeft class="mx-auto size-4" />
                     </button>
                     <span
-                        class="flex flex-1 items-center justify-center px-1 py-1.5 text-center text-xs font-medium text-stone-700"
-                    >
+                        class="flex flex-1 items-center justify-center px-1 py-1.5 text-center text-xs font-medium text-stone-700">
                         <template v-if="loading">Đang tải…</template>
                         <template v-else>Trang {{ page }} / {{ lastPage }}</template>
                     </span>
-                    <button type="button" class="page-pill-btn flex-1" :class="{ 'is-disabled': page >= lastPage || loading }"
-                        :disabled="page >= lastPage || loading" aria-label="Trang sau" @click="loadPage(page + 1)">
+                    <button type="button" class="page-pill-btn flex-1"
+                        :class="{ 'is-disabled': page >= lastPage || loading }" :disabled="page >= lastPage || loading"
+                        aria-label="Trang sau" @click="loadPage(page + 1)">
                         <ChevronRight class="mx-auto size-4" />
                     </button>
                 </div>
@@ -479,10 +469,12 @@ function txAmountClass(tx: Tx): string {
     color: rgb(68 64 60);
     transition: background 120ms ease, color 120ms ease;
 }
+
 .page-pill-btn:hover:not(:disabled) {
     background: rgb(250 250 249);
     color: rgb(120 53 15);
 }
+
 .page-pill-btn:disabled,
 .page-pill-btn.is-disabled {
     opacity: 0.4;
