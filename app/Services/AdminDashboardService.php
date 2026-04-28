@@ -258,6 +258,20 @@ class AdminDashboardService
     }
 
     /**
+     * DB stores timestamps in UTC, while dashboard range is resolved in display timezone.
+     * Convert boundaries back to UTC before applying whereBetween on *_at columns.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function utcRange(CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        return [
+            $start->setTimezone('UTC'),
+            $end->setTimezone('UTC'),
+        ];
+    }
+
+    /**
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}
      */
     private function resolveCustomRange(CarbonImmutable $now, ?string $dateFrom, ?string $dateTo, string $tz): array
@@ -392,11 +406,13 @@ class AdminDashboardService
         WalletSource $source,
         WalletDirection $direction,
     ): int {
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
+
         return (int) (WalletTransaction::query()
             ->whereIn('user_id', $userIdsSub)
             ->where('source', $source)
             ->where('direction', $direction)
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->sum('amount_vnd') ?? 0);
     }
 
@@ -408,11 +424,13 @@ class AdminDashboardService
         CarbonImmutable $start,
         CarbonImmutable $end,
     ): int {
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
+
         return (int) (WithdrawalRequest::query()
             ->whereIn('user_id', $userIdsSub)
             ->where('status', WithdrawalStatus::Approved->value)
             ->whereNotNull('processed_at')
-            ->whereBetween('processed_at', [$start, $end])
+            ->whereBetween('processed_at', [$utcStart, $utcEnd])
             ->sum('amount_vnd') ?? 0);
     }
 
@@ -425,6 +443,7 @@ class AdminDashboardService
         CarbonImmutable $start,
         CarbonImmutable $end,
     ): array {
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
         $wDay = $this->sqlLocalDateForUtcColumn('wallet_transactions.created_at');
         $eDay = $this->sqlLocalDateForUtcColumn('event_bets.created_at');
         $uDay = $this->sqlLocalDateForUtcColumn('users.created_at');
@@ -460,7 +479,7 @@ class AdminDashboardService
         );
 
         $newUsersByDay = $this->customersQuery($actor)
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$uDay} as d, COUNT(*) as c")
             ->groupByRaw($uDay)
@@ -469,7 +488,7 @@ class AdminDashboardService
 
         $betsByDay = EventBet::query()
             ->whereIn('user_id', $customerIdsSub)
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$eDay} as d, COUNT(*) as c")
             ->groupByRaw($eDay)
@@ -505,11 +524,13 @@ class AdminDashboardService
         WalletSource $source,
         WalletDirection $direction,
     ): array {
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
+
         return WalletTransaction::query()
             ->whereIn('user_id', $userIdsSub)
             ->where('source', $source)
             ->where('direction', $direction)
-            ->whereBetween('created_at', [$start, $end])
+            ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$dayExpr} as d, COALESCE(SUM(amount_vnd),0) as t")
             ->groupByRaw($dayExpr)
@@ -525,13 +546,14 @@ class AdminDashboardService
         CarbonImmutable $start,
         CarbonImmutable $end,
     ): array {
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
         $dExpr = $this->sqlLocalDateForUtcColumn('withdrawal_requests.processed_at');
 
         return WithdrawalRequest::query()
             ->whereIn('user_id', $userIdsSub)
             ->where('status', WithdrawalStatus::Approved->value)
             ->whereNotNull('processed_at')
-            ->whereBetween('processed_at', [$start, $end])
+            ->whereBetween('processed_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$dExpr} as d, COALESCE(SUM(amount_vnd),0) as t")
             ->groupByRaw($dExpr)
