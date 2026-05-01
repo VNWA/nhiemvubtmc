@@ -105,6 +105,7 @@ class AdminDashboardService
                 'processor.roles',
             ])
             ->whereIn('user_id', $customerIdsSub)
+            ->orderByRaw('COALESCE(processed_at, created_at) DESC')
             ->orderByDesc('id')
             ->limit(8)
             ->get()
@@ -119,6 +120,8 @@ class AdminDashboardService
                 'status' => $r->status->value,
                 'status_label' => $r->status->label(),
                 'created_at' => $r->created_at?->formatVn(),
+                'processed_at' => $r->processed_at?->formatVn(),
+                'occurred_at' => ($r->processed_at ?? $r->created_at)?->formatVn(),
                 'processor' => $this->serializeStaffActor($r->processor),
             ]);
 
@@ -127,8 +130,8 @@ class AdminDashboardService
                 'creator:id,name,username',
                 'creator.roles',
             ])
+            ->orderByDesc('created_at')
             ->orderByDesc('id')
-            ->limit(8)
             ->get(['id', 'name', 'username', 'created_at', 'created_by'])
             ->map(fn (User $u) => [
                 'id' => (int) $u->getKey(),
@@ -140,6 +143,7 @@ class AdminDashboardService
 
         $activities = $this->recentActivitiesQuery($actor, $customerIdsSub, $isAdmin)
             ->with(['actor:id,name,username', 'target:id,name,username'])
+            ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(10)
             ->get()

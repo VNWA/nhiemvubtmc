@@ -49,7 +49,12 @@ type RecentW = {
     amount_vnd: number;
     status: string;
     status_label: string;
+    /** Thời tạo yêu cầu (VN). */
     created_at: string | null;
+    /** Khi duyệt / từ chối / huỷ (VN), null nếu chờ. */
+    processed_at: string | null;
+    /** Giống dòng giao dịch Deposit: đã xử lý → processed_at, chờ → created_at. */
+    occurred_at: string | null;
     processor: StaffActor | null;
 };
 
@@ -683,6 +688,7 @@ defineOptions({
                             <tr>
                                 <th class="px-2 py-1 font-medium">Khách</th>
                                 <th class="px-2 py-1 font-medium">Số tiền</th>
+                                <th class="px-2 py-1 font-medium">Thời gian</th>
                                 <th class="px-2 py-1 font-medium">Trạng thái</th>
                                 <th class="px-2 py-1 font-medium">Người xử lý</th>
                             </tr>
@@ -699,6 +705,10 @@ defineOptions({
                                 <td class="px-2 py-1.5 font-mono">{{
                                     formatVnd(w.amount_vnd)
                                 }}</td>
+                                <td
+                                    class="whitespace-nowrap px-2 py-1.5 text-stone-500"
+                                    :title="w.processed_at ? `Tạo: ${w.created_at ?? '—'}` : undefined"
+                                >{{ w.occurred_at ?? '—' }}</td>
                                 <td
                                     class="px-2 py-1.5"
                                 >{{ w.status_label }}</td>
