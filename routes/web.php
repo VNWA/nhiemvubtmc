@@ -17,7 +17,7 @@ use App\Http\Controllers\Sukien\EventBetController;
 use App\Http\Controllers\Sukien\SukienEventRoomController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'user.last_access'])->group(function () {
+Route::middleware(['auth', 'verified', 'user.last_access', 'check.vietnam.ip'])->group(function () {
     Route::controller(ClientController::class)->group(function () {
         Route::get('/', 'index')->name('home');
     });
@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified', 'user.last_access'])->group(function () {
         Route::post('{slug}/bet', [EventBetController::class, 'store'])->name('bet.store');
         Route::delete('{slug}/bet', [EventBetController::class, 'destroy'])->name('bet.destroy');
     });
+
 });
 
 Route::middleware(['auth', 'verified', 'role:admin|staff', 'user.last_access'])

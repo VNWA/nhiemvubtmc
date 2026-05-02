@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckVietnamIp;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'user.last_access' => UpdateUserLastAccess::class,
+            'check.vietnam.ip' => CheckVietnamIp::class,
         ]);
 
         $middleware->web(append: [
