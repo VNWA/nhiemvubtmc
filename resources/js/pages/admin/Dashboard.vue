@@ -83,6 +83,8 @@ const props = defineProps<{
         date_from: string;
         date_to: string;
         label: string;
+        /** IANA — khoảng ngày tùy chọn & trục biểu đồ theo múi này (không theo múi trình duyệt). */
+        display_timezone: string;
     };
     quick: Quick;
     overview: Overview;
@@ -325,6 +327,14 @@ defineOptions({
                         class="rounded border border-sidebar-border/60 bg-white px-2 py-1 text-xs dark:border-sidebar-border dark:bg-stone-900"
                     />
                 </div>
+                <p
+                    class="w-full text-[10px] leading-snug text-stone-500 dark:text-stone-400"
+                >
+                    Ngày chọn & cột biểu đồ theo lịch múi
+                    <span class="font-mono">{{ period.display_timezone }}</span>
+                    (cấu hình server). Giờ nửa đêm theo múi này luôn thuộc đúng “ngày” đó; nếu lệch,
+                    kiểm tra <span class="font-mono">APP_DISPLAY_TIMEZONE</span> và deploy code mới nhất.
+                </p>
                 <button
                     type="button"
                     class="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700 dark:bg-stone-200 dark:text-stone-900 dark:hover:bg-white"

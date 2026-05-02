@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\WalletDirection;
+use App\Enums\WalletSource;
 use App\Enums\WithdrawalStatus;
 use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
@@ -55,6 +59,7 @@ class DashboardTest extends TestCase
                 ->has('chart_series')
                 ->has('quick')
                 ->has('quick.period_admin_debit_vnd')
+                ->has('period.display_timezone')
                 ->has('recent'));
     }
 
@@ -109,5 +114,44 @@ class DashboardTest extends TestCase
                 ->where('recent.withdrawals.0.processor.role_label', 'Nhân viên')
                 ->where('recent.users.0.creator.username', 'staff_processor')
                 ->where('recent.users.0.creator.role_label', 'Nhân viên'));
+    }
+
+    public function test_dashboard_custom_day_buckets_utc_instant_into_display_timezone_day(): void
+    {
+        $this->createRoles();
+        config([
+            'app.timezone' => 'UTC',
+            'app.display_timezone' => 'Asia/Ho_Chi_Minh',
+        ]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole('admin');
+        $customer = User::factory()->create();
+        $customer->assignRole('user');
+
+        $at = CarbonImmutable::parse('2026-04-27 17:30:00', 'UTC');
+        $tx = new WalletTransaction([
+            'user_id' => $customer->getKey(),
+            'direction' => WalletDirection::Credit,
+            'source' => WalletSource::AdminCredit,
+            'amount_vnd' => 77_000,
+            'balance_after_vnd' => 77_000,
+            'description' => 'Midnight bucket test',
+            'meta' => null,
+        ]);
+        $tx->created_at = $at;
+        $tx->updated_at = $at;
+        $tx->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard', [
+                'period' => 'custom',
+                'date_from' => '2026-04-28',
+                'date_to' => '2026-04-28',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('chart_series.0.key', '2026-04-28')
+                ->where('chart_series.0.deposit_vnd', 77_000));
     }
 }

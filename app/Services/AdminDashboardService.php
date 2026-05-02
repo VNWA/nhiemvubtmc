@@ -175,6 +175,7 @@ class AdminDashboardService
                 'date_from' => $start->toDateString(),
                 'date_to' => $end->toDateString(),
                 'label' => $this->periodLabel($period, $start, $end, $dateFrom, $dateTo),
+                'display_timezone' => (string) config('app.display_timezone', 'Asia/Ho_Chi_Minh'),
             ],
             'quick' => $quick,
             'overview' => $overview,
@@ -325,6 +326,9 @@ class AdminDashboardService
      * Tên cột thời gian lưu UTC (Eloquent) — trả về biểu thức SQL: ngày lịch Y-m-d theo
      * `config('app.display_timezone')`, trùng cách tính kỳ trên chart (vòng lặp theo múi VN).
      * Trước đây dùng DATE(created_at) nên theo ngày UTC → nạp 28/4 VN bị tính 27/4.
+     *
+     * MySQL/MariaDB: dùng DATE_ADD theo offset giây thay vì CONVERT_TZ — cột `timestamp`
+     * dễ bị lệch quanh 0h theo @@session.time_zone nếu gói CONVERT_TZ(..., '+00:00', ...).
      */
     private function sqlLocalDateForUtcColumn(string $tableColumn): string
     {
@@ -335,9 +339,9 @@ class AdminDashboardService
         }
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            $to = $this->mysqlOffsetStringForTimezone($tz);
+            $seconds = $this->displayTimezoneOffsetSeconds($tz);
 
-            return "DATE(CONVERT_TZ({$tableColumn}, '+00:00', '{$to}'))";
+            return "DATE(DATE_ADD({$tableColumn}, INTERVAL {$seconds} SECOND))";
         }
 
         if ($driver === 'sqlite') {
@@ -358,23 +362,40 @@ class AdminDashboardService
     }
 
     /**
-     * Dạng +HH:MM:SS cho tham số thứ 3 của MySQL CONVERT_TZ (không phụ thuộc bảng time_zone).
+     * Offset giây từ UTC → múi hiển thị (dùng cho DATE_ADD trên MySQL).
      */
-    private function mysqlOffsetStringForTimezone(string $timeZoneName): string
+    private function displayTimezoneOffsetSeconds(string $timeZoneName): int
     {
         try {
             $utc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-            $offsetSeconds = (new \DateTimeZone($timeZoneName))->getOffset($utc);
-            $sign = $offsetSeconds >= 0 ? '+' : '-';
-            $abs = abs($offsetSeconds);
-            $h = intdiv($abs, 3600);
-            $m = intdiv($abs % 3600, 60);
-            $s = $abs % 60;
 
-            return sprintf('%s%02d:%02d:%02d', $sign, $h, $m, $s);
+            return (new \DateTimeZone($timeZoneName))->getOffset($utc);
         } catch (\Throwable) {
-            return '+07:00:00';
+            return 25_200;
         }
+    }
+
+    /**
+     * @param  array<string|int, mixed>  $byDay
+     * @return array<string, int>
+     */
+    private function normalizeDayBuckets(array $byDay): array
+    {
+        $out = [];
+        foreach ($byDay as $day => $value) {
+            if ($day instanceof \DateTimeInterface) {
+                $day = $day->format('Y-m-d');
+            }
+            $day = (string) $day;
+            if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $day, $m)) {
+                $day = $m[1];
+            } else {
+                continue;
+            }
+            $out[$day] = (int) ($out[$day] ?? 0) + (int) $value;
+        }
+
+        return $out;
     }
 
     /**
@@ -452,52 +473,52 @@ class AdminDashboardService
         $eDay = $this->sqlLocalDateForUtcColumn('event_bets.created_at');
         $uDay = $this->sqlLocalDateForUtcColumn('users.created_at');
 
-        $depositsByDay = $this->groupSumWalletByDay(
+        $depositsByDay = $this->normalizeDayBuckets($this->groupSumWalletByDay(
             $customerIdsSub,
             $start,
             $end,
             $wDay,
             WalletSource::AdminCredit,
             WalletDirection::Credit,
-        );
-        $withdrawalsByDay = $this->groupApprovedWithdrawalsByDay(
+        ));
+        $withdrawalsByDay = $this->normalizeDayBuckets($this->groupApprovedWithdrawalsByDay(
             $customerIdsSub,
             $start,
             $end,
-        );
-        $adminDebitByDay = $this->groupSumWalletByDay(
+        ));
+        $adminDebitByDay = $this->normalizeDayBuckets($this->groupSumWalletByDay(
             $customerIdsSub,
             $start,
             $end,
             $wDay,
             WalletSource::AdminDebit,
             WalletDirection::Debit,
-        );
-        $commissionByDay = $this->groupSumWalletByDay(
+        ));
+        $commissionByDay = $this->normalizeDayBuckets($this->groupSumWalletByDay(
             $customerIdsSub,
             $start,
             $end,
             $wDay,
             WalletSource::Commission,
             WalletDirection::Credit,
-        );
+        ));
 
-        $newUsersByDay = $this->customersQuery($actor)
+        $newUsersByDay = $this->normalizeDayBuckets($this->customersQuery($actor)
             ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$uDay} as d, COUNT(*) as c")
             ->groupByRaw($uDay)
             ->pluck('c', 'd')
-            ->all();
+            ->all());
 
-        $betsByDay = EventBet::query()
+        $betsByDay = $this->normalizeDayBuckets(EventBet::query()
             ->whereIn('user_id', $customerIdsSub)
             ->whereBetween('created_at', [$utcStart, $utcEnd])
             ->toBase()
             ->selectRaw("{$eDay} as d, COUNT(*) as c")
             ->groupByRaw($eDay)
             ->pluck('c', 'd')
-            ->all();
+            ->all());
 
         $out = [];
         for ($c = $start; $c->lte($end); $c = $c->addDay()) {
