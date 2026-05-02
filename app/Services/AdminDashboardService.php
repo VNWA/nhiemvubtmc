@@ -30,6 +30,7 @@ class AdminDashboardService
         $isStaffOnly = $actor->hasRole('staff') && ! $isAdmin;
 
         [$start, $end] = $this->resolveRange($period, $dateFrom, $dateTo);
+        [$utcStart, $utcEnd] = $this->utcRange($start, $end);
 
         $customerQuery = $this->customersQuery($actor);
         $customerIdsSub = $customerQuery->clone()->select('users.id');
@@ -72,7 +73,7 @@ class AdminDashboardService
 
         $overview = [
             'new_customers_in_period' => (int) $customerQuery->clone()
-                ->whereBetween('created_at', [$start, $end])
+                ->whereBetween('created_at', [$utcStart, $utcEnd])
                 ->count(),
             'active_customers' => (int) $customerQuery->clone()
                 ->where('status', UserStatus::Active->value)

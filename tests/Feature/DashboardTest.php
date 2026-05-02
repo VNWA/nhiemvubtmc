@@ -10,6 +10,7 @@ use App\Models\WalletTransaction;
 use App\Models\WithdrawalRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -153,5 +154,34 @@ class DashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('chart_series.0.key', '2026-04-28')
                 ->where('chart_series.0.deposit_vnd', 77_000));
+    }
+
+    public function test_overview_new_customers_today_includes_signups_after_midnight_display_timezone(): void
+    {
+        $this->createRoles();
+        config([
+            'app.timezone' => 'UTC',
+            'app.display_timezone' => 'Asia/Ho_Chi_Minh',
+        ]);
+
+        Carbon::setTestNow(CarbonImmutable::parse('2026-05-03 12:00:00', 'Asia/Ho_Chi_Minh'));
+
+        try {
+            $admin = User::factory()->create();
+            $admin->assignRole('admin');
+
+            $customer = User::factory()->create();
+            $customer->assignRole('user');
+            $customer->created_at = CarbonImmutable::parse('2026-05-03 00:43:45', 'Asia/Ho_Chi_Minh');
+            $customer->saveQuietly();
+
+            $this->actingAs($admin)
+                ->get(route('admin.dashboard', ['period' => 'today']))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('overview.new_customers_in_period', 1));
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }

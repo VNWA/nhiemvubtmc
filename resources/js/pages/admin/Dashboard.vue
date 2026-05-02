@@ -447,6 +447,10 @@ defineOptions({
                     class="rounded-lg border border-sidebar-border/70 p-3 dark:border-sidebar-border"
                 >
                     <p class="text-xs text-stone-500">Khách mới (trong kỳ)</p>
+                    <p class="text-[10px] text-stone-400 dark:text-stone-500">
+                        Từ 0h đến hết ngày theo
+                        <span class="font-mono">{{ period.display_timezone }}</span>
+                    </p>
                     <p class="mt-0.5 font-mono text-xl font-bold">
                         {{ overview.new_customers_in_period.toLocaleString('vi-VN') }}
                     </p>
