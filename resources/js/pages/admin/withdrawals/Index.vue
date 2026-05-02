@@ -55,6 +55,8 @@ type Summary = {
 type StatusOption = { value: string; label: string };
 
 const props = defineProps<{
+    /** IANA — khoảng ngày tạo yêu cầu theo lịch múi này (không theo APP_TIMEZONE). */
+    display_timezone: string;
     items: Paginator;
     filter: {
         status: string;
@@ -69,7 +71,13 @@ const props = defineProps<{
     summary: Summary;
 }>();
 
-const onlyKeys = ['items', 'filter', 'summary', 'statusOptions'] as const;
+const onlyKeys = [
+    'items',
+    'filter',
+    'summary',
+    'statusOptions',
+    'display_timezone',
+] as const;
 
 const statusFilter = ref(props.filter.status ?? 'all');
 const searchQ = ref(props.filter.q ?? '');
@@ -376,6 +384,9 @@ defineOptions({
                 class="mt-0.5 text-xs text-muted-foreground"
             >
                 Lọc theo mã yêu cầu, người dùng, ngân hàng, số tài khoản, nội dung ghi chú, khoảng thời gian tạo, hoặc khoảng số tiền (VNĐ).
+                Ngày “Từ / Đến” là cả ngày lịch theo múi
+                <span class="font-mono text-foreground/80">{{ display_timezone }}</span>
+                (0h–24h), khớp cột “Tạo” hiển thị.
             </p>
             <div
                 class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

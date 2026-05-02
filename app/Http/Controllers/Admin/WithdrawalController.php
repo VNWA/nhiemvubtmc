@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
 use App\Services\WalletService;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -85,16 +85,27 @@ class WithdrawalController extends Controller
             }
         }
 
-        if ($dateFrom !== '') {
+        $displayTz = (string) config('app.display_timezone', 'Asia/Ho_Chi_Minh');
+        if (! preg_match('/^[A-Za-z0-9_\/+\-]+$/', $displayTz)) {
+            $displayTz = 'Asia/Ho_Chi_Minh';
+        }
+
+        if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
             try {
-                $query->where('withdrawal_requests.created_at', '>=', Carbon::parse($dateFrom)->startOfDay());
+                $fromUtc = CarbonImmutable::createFromFormat('Y-m-d', $dateFrom, $displayTz)
+                    ->startOfDay()
+                    ->utc();
+                $query->where('withdrawal_requests.created_at', '>=', $fromUtc);
             } catch (\Throwable) {
             }
         }
 
-        if ($dateTo !== '') {
+        if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
             try {
-                $query->where('withdrawal_requests.created_at', '<=', Carbon::parse($dateTo)->endOfDay());
+                $toUtc = CarbonImmutable::createFromFormat('Y-m-d', $dateTo, $displayTz)
+                    ->endOfDay()
+                    ->utc();
+                $query->where('withdrawal_requests.created_at', '<=', $toUtc);
             } catch (\Throwable) {
             }
         }
@@ -150,6 +161,7 @@ class WithdrawalController extends Controller
             ->keyBy('status');
 
         return Inertia::render('admin/withdrawals/Index', [
+            'display_timezone' => $displayTz,
             'items' => $items,
             'filter' => [
                 'status' => in_array($status, $allowedStatuses, true) ? $status : 'all',
