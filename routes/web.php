@@ -17,37 +17,39 @@ use App\Http\Controllers\Sukien\EventBetController;
 use App\Http\Controllers\Sukien\SukienEventRoomController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'user.last_access', 'check.vietnam.ip'])->group(function () {
-    Route::controller(ClientController::class)->group(function () {
-        Route::get('/', 'index')->name('home');
-    });
+Route::middleware(['auth', 'verified', 'user.last_access'])->group(function () {
+    Route::middleware('check.vietnam.ip')->group(function () {
+        Route::controller(ClientController::class)->group(function () {
+            Route::get('/', 'index')->name('home');
+        });
 
-    Route::get('gioi-thieu', [AboutController::class, 'show'])->name('about');
+        Route::get('gioi-thieu', [AboutController::class, 'show'])->name('about');
 
-    Route::prefix('rut-tien')->name('withdrawal.')->controller(WithdrawalController::class)->group(function () {
-        Route::get('/', 'create')->name('create');
-        Route::post('/', 'store')->name('store');
-        Route::delete('{withdrawal}', 'cancel')->name('cancel');
-    });
+        Route::prefix('rut-tien')->name('withdrawal.')->controller(WithdrawalController::class)->group(function () {
+            Route::get('/', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::delete('{withdrawal}', 'cancel')->name('cancel');
+        });
 
-    Route::prefix('tai-khoan')->name('account.')->controller(AccountController::class)->group(function () {
-        Route::get('/', 'show')->name('show');
-        Route::get('ho-so', 'editProfile')->name('profile.edit');
-        Route::get('mat-khau', 'editPassword')->name('password.edit');
-        Route::put('mat-khau', 'updatePassword')->middleware('throttle:6,1')->name('password.update');
-        Route::get('ngan-hang', 'editBank')->name('bank.edit');
-        Route::get('bao-cao', 'report')->name('report');
-        Route::get('vi', 'wallet')->name('wallet');
-        Route::get('vi/data', 'walletData')->name('wallet.data');
-        Route::get('su-kien', 'events')->name('events');
-    });
+        Route::prefix('tai-khoan')->name('account.')->controller(AccountController::class)->group(function () {
+            Route::get('/', 'show')->name('show');
+            Route::get('ho-so', 'editProfile')->name('profile.edit');
+            Route::get('mat-khau', 'editPassword')->name('password.edit');
+            Route::put('mat-khau', 'updatePassword')->middleware('throttle:6,1')->name('password.update');
+            Route::get('ngan-hang', 'editBank')->name('bank.edit');
+            Route::get('bao-cao', 'report')->name('report');
+            Route::get('vi', 'wallet')->name('wallet');
+            Route::get('vi/data', 'walletData')->name('wallet.data');
+            Route::get('su-kien', 'events')->name('events');
+        });
 
-    Route::prefix('sukien')->name('sukien.')->group(function () {
-        Route::get('/', [SukienEventRoomController::class, 'index'])->name('index');
-        Route::get('{slug}', [SukienEventRoomController::class, 'show'])->name('show');
-        Route::get('{slug}/rounds', [SukienEventRoomController::class, 'roundsHistory'])->name('rounds.history');
-        Route::post('{slug}/bet', [EventBetController::class, 'store'])->name('bet.store');
-        Route::delete('{slug}/bet', [EventBetController::class, 'destroy'])->name('bet.destroy');
+        Route::prefix('sukien')->name('sukien.')->group(function () {
+            Route::get('/', [SukienEventRoomController::class, 'index'])->name('index');
+            Route::get('{slug}', [SukienEventRoomController::class, 'show'])->name('show');
+            Route::get('{slug}/rounds', [SukienEventRoomController::class, 'roundsHistory'])->name('rounds.history');
+            Route::post('{slug}/bet', [EventBetController::class, 'store'])->name('bet.store');
+            Route::delete('{slug}/bet', [EventBetController::class, 'destroy'])->name('bet.destroy');
+        });
     });
 
 });
