@@ -28,6 +28,7 @@ type Tx = {
     balance_after_vnd: number;
     description: string | null;
     created_at: string | null;
+    updated_at: string | null;
     meta: Record<string, unknown>;
 };
 
@@ -362,7 +363,12 @@ function txAmountClass(tx: Tx): string {
                                 <Snowflake v-if="tx.source === 'admin_freeze'" class="size-2.5 shrink-0" />
                                 <span class="min-w-0">{{ tx.source_label }}</span>
                             </span>
-                            <span>{{ tx.created_at ?? '—' }}</span>
+                            <span>
+                                {{ tx.created_at ?? '—' }}
+                                <template v-if="tx.updated_at && tx.updated_at !== tx.created_at">
+                                    <span class="text-stone-400"> · CN: {{ tx.updated_at }}</span>
+                                </template>
+                            </span>
                         </div>
                     </div>
                     <div class="text-right">

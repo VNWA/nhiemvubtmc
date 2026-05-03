@@ -115,4 +115,53 @@ class AccountWalletFilterTest extends TestCase
                 ->where('filter', 'freeze')
             );
     }
+
+    public function test_wallet_orders_event_cluster_bet_place_then_refund_then_commission_by_updated_at(): void
+    {
+        $user = User::factory()->create();
+        $betKey = 4242;
+
+        $bet = WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Debit,
+            'source' => WalletSource::BetPlace,
+            'amount_vnd' => 1_000,
+            'balance_after_vnd' => 99_000,
+            'description' => 'Tham gia',
+            'meta' => ['bet_id' => $betKey],
+        ]);
+        $bet->forceFill(['updated_at' => now()->subHours(3)])->saveQuietly();
+
+        WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Credit,
+            'source' => WalletSource::Commission,
+            'amount_vnd' => 50,
+            'balance_after_vnd' => 99_150,
+            'description' => 'Hoa hồng',
+            'meta' => ['event_bet_id' => $betKey],
+        ])->forceFill(['updated_at' => now()])->saveQuietly();
+
+        $refund = WalletTransaction::query()->create([
+            'user_id' => $user->id,
+            'direction' => WalletDirection::Credit,
+            'source' => WalletSource::EventRefund,
+            'amount_vnd' => 100,
+            'balance_after_vnd' => 99_100,
+            'description' => 'Hoàn trả',
+            'meta' => ['event_bet_id' => $betKey],
+        ]);
+        $refund->forceFill(['updated_at' => now()->subMinute()])->saveQuietly();
+
+        $this->actingAs($user)
+            ->get(route('account.wallet'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('account/Wallet')
+                ->has('transactions', 3)
+                ->where('transactions.0.source', 'bet_place')
+                ->where('transactions.1.source', 'event_refund')
+                ->where('transactions.2.source', 'commission')
+            );
+    }
 }

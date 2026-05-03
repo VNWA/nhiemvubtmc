@@ -11,9 +11,11 @@ use App\Models\EventBet;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -252,7 +254,8 @@ class AccountController extends Controller
 
         $query = WalletTransaction::query()
             ->where('user_id', $user->getKey())
-            ->orderByDesc('created_at');
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
 
         $this->applyFilter($query, $filter);
 
@@ -261,9 +264,10 @@ class AccountController extends Controller
         $lastPage = $total > 0 ? (int) max(1, (int) ceil($total / self::TRANSACTIONS_PER_PAGE)) : 1;
         $page = min($page, $lastPage);
 
-        $items = (clone $query)
+        $rows = (clone $query)
             ->forPage($page, self::TRANSACTIONS_PER_PAGE)
-            ->get()
+            ->get();
+        $items = $this->sortWalletTransactionsForDisplay($rows)
             ->map(fn (WalletTransaction $tx) => $this->formatTransaction($tx));
 
         $wallet = $this->walletSnapshot($user);
@@ -292,7 +296,8 @@ class AccountController extends Controller
 
         $query = WalletTransaction::query()
             ->where('user_id', $user->getKey())
-            ->orderByDesc('created_at');
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
 
         $this->applyFilter($query, $filter);
 
@@ -301,9 +306,10 @@ class AccountController extends Controller
         $lastPage = $total > 0 ? (int) max(1, (int) ceil($total / self::TRANSACTIONS_PER_PAGE)) : 1;
         $page = min($page, $lastPage);
 
-        $items = (clone $query)
+        $rows = (clone $query)
             ->forPage($page, self::TRANSACTIONS_PER_PAGE)
-            ->get()
+            ->get();
+        $items = $this->sortWalletTransactionsForDisplay($rows)
             ->map(fn (WalletTransaction $tx) => $this->formatTransaction($tx));
 
         return response()->json([
@@ -440,7 +446,7 @@ class AccountController extends Controller
     }
 
     /**
-     * @return array{id: int, direction: string, source: string, source_label: string, amount_vnd: int, balance_after_vnd: int, description: ?string, created_at: ?string, meta: array<string, mixed>}
+     * @return array{id: int, direction: string, source: string, source_label: string, amount_vnd: int, balance_after_vnd: int, description: ?string, created_at: ?string, updated_at: ?string, meta: array<string, mixed>}
      */
     private function formatTransaction(WalletTransaction $tx): array
     {
@@ -453,7 +459,91 @@ class AccountController extends Controller
             'balance_after_vnd' => (int) $tx->balance_after_vnd,
             'description' => $tx->description,
             'created_at' => $tx->created_at?->formatVn(),
+            'updated_at' => $tx->updated_at?->formatVn(),
             'meta' => is_array($tx->meta) ? $tx->meta : [],
         ];
+    }
+
+    /**
+     * Khóa gom các dòng cùng một cược/phiên: `meta.event_bet_id` (hoàn/hoa hồng) hoặc `meta.bet_id` (phí tham gia).
+     */
+    private function walletEventBetKey(WalletTransaction $tx): int
+    {
+        $m = $tx->meta;
+        if (! is_array($m)) {
+            return 0;
+        }
+        $eb = isset($m['event_bet_id']) ? (int) $m['event_bet_id'] : 0;
+        if ($eb > 0) {
+            return $eb;
+        }
+        $bid = isset($m['bet_id']) ? (int) $m['bet_id'] : 0;
+
+        return $bid > 0 ? $bid : 0;
+    }
+
+    /**
+     * Thứ tự đọc trong cùng một phiên: tham gia → hoàn/trả → hoa hồng.
+     */
+    private function walletEventFlowRank(WalletTransaction $tx): int
+    {
+        return match ($tx->source) {
+            WalletSource::BetPlace => 1,
+            WalletSource::BetCancel, WalletSource::EventRefund => 2,
+            WalletSource::Commission => 3,
+            default => 50,
+        };
+    }
+
+    /**
+     * Sắp xếp trang lịch sử: cụm cùng `walletEventBetKey` theo mốc cập nhật mới nhất trong trang,
+     * trong cụm luôn bet_place → hoàn/trả → hoa hồng; các giao dịch khác theo `updated_at` giảm dần.
+     *
+     * @param  EloquentCollection<int, WalletTransaction>  $rows
+     * @return Collection<int, WalletTransaction>
+     */
+    private function sortWalletTransactionsForDisplay(EloquentCollection $rows): Collection
+    {
+        if ($rows->isEmpty()) {
+            return $rows->collect();
+        }
+
+        $maxUpdatedByBet = [];
+        foreach ($rows as $tx) {
+            $k = $this->walletEventBetKey($tx);
+            if ($k === 0) {
+                continue;
+            }
+            $u = $tx->updated_at?->getTimestamp() ?? 0;
+            $maxUpdatedByBet[$k] = max($maxUpdatedByBet[$k] ?? 0, $u);
+        }
+
+        return $rows->sort(function (WalletTransaction $a, WalletTransaction $b) use ($maxUpdatedByBet): int {
+            $ka = $this->walletEventBetKey($a);
+            $kb = $this->walletEventBetKey($b);
+            $ca = $ka > 0 ? ($maxUpdatedByBet[$ka] ?? 0) : ($a->updated_at?->getTimestamp() ?? 0);
+            $cb = $kb > 0 ? ($maxUpdatedByBet[$kb] ?? 0) : ($b->updated_at?->getTimestamp() ?? 0);
+            if ($ca !== $cb) {
+                return $cb <=> $ca;
+            }
+
+            if ($ka === $kb && $ka > 0) {
+                $ra = $this->walletEventFlowRank($a);
+                $rb = $this->walletEventFlowRank($b);
+                if ($ra !== $rb) {
+                    return $ra <=> $rb;
+                }
+            } elseif ($ka !== $kb) {
+                return $kb <=> $ka;
+            }
+
+            $ua = $a->updated_at?->getTimestamp() ?? 0;
+            $ub = $b->updated_at?->getTimestamp() ?? 0;
+            if ($ua !== $ub) {
+                return $ub <=> $ua;
+            }
+
+            return (int) $b->getKey() <=> (int) $a->getKey();
+        })->values();
     }
 }
