@@ -116,7 +116,7 @@ class AccountWalletFilterTest extends TestCase
             );
     }
 
-    public function test_wallet_orders_event_cluster_bet_place_then_refund_then_commission_by_updated_at(): void
+    public function test_wallet_orders_event_cluster_from_top_commission_refund_bet_reading_bottom_up_story(): void
     {
         $user = User::factory()->create();
         $betKey = 4242;
@@ -159,9 +159,9 @@ class AccountWalletFilterTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('account/Wallet')
                 ->has('transactions', 3)
-                ->where('transactions.0.source', 'bet_place')
+                ->where('transactions.0.source', 'commission')
                 ->where('transactions.1.source', 'event_refund')
-                ->where('transactions.2.source', 'commission')
+                ->where('transactions.2.source', 'bet_place')
             );
     }
 }

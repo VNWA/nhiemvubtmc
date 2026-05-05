@@ -483,7 +483,8 @@ class AccountController extends Controller
     }
 
     /**
-     * Thứ tự đọc trong cùng một phiên: tham gia → hoàn/trả → hoa hồng.
+     * Thứ tự logic trong phiên (bước 1 → 3): phí tham gia → hoàn/trả → hoa hồng.
+     * Trên danh sách (trên xuống) hiển thị ngược bậc (cao hơn = bước sau): hoa hồng → hoàn/trả → phí.
      */
     private function walletEventFlowRank(WalletTransaction $tx): int
     {
@@ -497,7 +498,7 @@ class AccountController extends Controller
 
     /**
      * Sắp xếp trang lịch sử: cụm cùng `walletEventBetKey` theo mốc cập nhật mới nhất trong trang,
-     * trong cụm luôn bet_place → hoàn/trả → hoa hồng; các giao dịch khác theo `updated_at` giảm dần.
+     * trong cụm: trên cùng hoa hồng, rồi hoàn/trả, rồi phí tham gia (đọc từ dưới lên đúng thứ tự tham gia); các dòng khác theo `updated_at` giảm dần.
      *
      * @param  EloquentCollection<int, WalletTransaction>  $rows
      * @return Collection<int, WalletTransaction>
@@ -531,7 +532,7 @@ class AccountController extends Controller
                 $ra = $this->walletEventFlowRank($a);
                 $rb = $this->walletEventFlowRank($b);
                 if ($ra !== $rb) {
-                    return $ra <=> $rb;
+                    return $rb <=> $ra;
                 }
             } elseif ($ka !== $kb) {
                 return $kb <=> $ka;
